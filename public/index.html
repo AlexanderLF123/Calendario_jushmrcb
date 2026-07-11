@@ -711,49 +711,56 @@ function renderWeek(){
 
 // ===================== SELECT DAY =====================
 function selectDay(dt){
+  try{
   if(typeof dt === 'string') dt = new Date(dt + 'T12:00:00');
   selDate = dt;
   const key = dk(dt);
   const dayData = getDayData(key);
 
   document.getElementById('detailHeader').innerHTML =
-    `<h3>${fmtFull(dt)}</h3><p>Edita las comisiones de cada conductor · Puedes agregar varias por conductor</p>`;
+    '<h3>'+fmtFull(dt)+'</h3><p>Edita las comisiones de cada conductor</p>';
   document.getElementById('detailFooter').style.display='flex';
 
-  // Summary
-  const totalEnt  = dayData.drivers.reduce((s,d)=>s+d.entries.length,0);
-  const unidades  = new Set(dayData.drivers.flatMap(d=>d.entries.map(e=>e.placa).filter(Boolean))).size;
+  const totalEnt  = dayData.drivers.reduce(function(s,d){return s+(d.entries?d.entries.length:0)},0);
+  const unidadesArr = [];
+  dayData.drivers.forEach(function(d){
+    if(d&&d.entries){d.entries.forEach(function(e){if(e&&e.placa)unidadesArr.push(e.placa)})}
+  });
+  const unidades = new Set(unidadesArr).size;
 
-  let html=`<div class="summary-row" style="grid-template-columns:1fr 1fr">
-    <div class="scard"><span class="sv" style="color:var(--c1)">${unidades}</span><div class="sl">Unidades Vehiculares</div></div>
-    <div class="scard"><span class="sv" style="color:var(--c2)">${totalEnt}</span><div class="sl">Salidas</div></div>
-  </div>`;
+  let html='<div class="summary-row" style="grid-template-columns:1fr 1fr">'+
+    '<div class="scard"><span class="sv" style="color:var(--c1)">'+unidades+'</span><div class="sl">Unidades Vehiculares</div></div>'+
+    '<div class="scard"><span class="sv" style="color:var(--c2)">'+totalEnt+'</span><div class="sl">Salidas</div></div>'+
+  '</div>';
 
-  // Driver sections
-  for(let ci=0;ci<5;ci++){
-    const d=dayData.drivers[ci];
-    const cnt=d.entries.length;
-    const nm=dName(ci)||`Conductor ${ci+1}`;
-    html+=`<div class="driver-section ds${ci}" id="dsc${ci}">
-      <div class="driver-head" onclick="toggleD(${ci})">
-        <div class="dcolor" style="background:${COLORS[ci]}"></div>
-        <input class="dname-input" id="dni${ci}" value="${nm}" onclick="event.stopPropagation()"
-          onchange="updateName(${ci},this.value)" title="Editar nombre">
-        <span class="dbadge bg${ci}">${cnt?cnt+' comisión'+(cnt>1?'es':''):'Sin datos'}</span>
-        <span class="dtoggle${cnt?' open':''}" id="dtg${ci}">▼</span>
-      </div>
-      <div class="driver-body${cnt?' open':''}" id="dbody${ci}">
-        <div class="entries-list" id="elist${ci}">`;
-    d.entries.forEach((e,ei)=>{ html+=entryHTML(ci,ei,e); });
-    html+=`</div>
-        <div class="add-entry-btn" onclick="addEntry(${ci})">＋ Agregar comisión para ${nm.split(' ')[0]||'este conductor'}</div>
-      </div>
-    </div>`;
+  for(var ci=0;ci<5;ci++){
+    var d=dayData.drivers[ci];
+    var entries=d.entries||[];
+    var cnt=entries.length;
+    var nm=dName(ci)||'Conductor '+(ci+1);
+    html+='<div class="driver-section ds'+ci+'" id="dsc'+ci+'">'+
+      '<div class="driver-head" onclick="toggleD('+ci+')">'+
+        '<div class="dcolor" style="background:'+COLORS[ci]+'"></div>'+
+        '<input class="dname-input" id="dni'+ci+'" value="'+nm.replace(/"/g,'&quot;')+'" onclick="event.stopPropagation()"'+
+          ' onchange="updateName('+ci+',this.value)" title="Editar nombre">'+
+        '<span class="dbadge bg'+ci+'">'+(cnt?cnt+' comisión'+(cnt>1?'es':''):'Sin datos')+'</span>'+
+        '<span class="dtoggle'+(cnt?' open':'')+'" id="dtg'+ci+'">&#9660;</span>'+
+      '</div>'+
+      '<div class="driver-body'+(cnt?' open':'')+'" id="dbody'+ci+'">'+
+        '<div class="entries-list" id="elist'+ci+'">';
+    entries.forEach(function(e,ei){ html+=entryHTML(ci,ei,e); });
+    html+='</div>'+
+        '<div class="add-entry-btn" onclick="addEntry('+ci+')">+ Agregar comision para '+nm.split(' ')[0]+'</div>'+
+      '</div>'+
+    '</div>';
   }
 
   document.getElementById('detailBody').innerHTML=html;
   renderMonth();
   if(view==='week') renderWeek();
+  }catch(err){
+    document.getElementById('detailBody').innerHTML='<div class="empty"><div class="ei">⚠️</div><p>Error: '+err.message+'</p><p style="font-size:11px;color:#999">'+err.stack+'</p></div>';
+  }
 }
 
 function entryHTML(ci,ei,e){
