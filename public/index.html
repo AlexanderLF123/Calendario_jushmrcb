@@ -586,11 +586,18 @@ const dName = i => conductores[i] || `Conductor ${i+1}`;
 
 function emptyDrivers(){return Array.from({length:5},()=>({entries:[]}))}
 function getDayData(key){
-  if(!data[key]) data[key]={drivers:emptyDrivers()};
-  while(data[key].drivers.length<5) data[key].drivers.push(null);
-  data[key].drivers = data[key].drivers.map(d => {
-    if(!d) return {entries:[]};
-    return {entries: fixEntries(d.entries)};
+  if(!data[key]) data[key]={drivers:[]};
+  var dr=data[key].drivers;
+  if(!Array.isArray(dr)){
+    var fixed=[];
+    for(var i=0;i<5;i++) fixed.push(dr[i]||null);
+    data[key].drivers=fixed;
+    dr=fixed;
+  }
+  while(dr.length<5) dr.push(null);
+  data[key].drivers=dr.map(function(d){
+    if(!d||typeof d!=='object') return {entries:[]};
+    return {entries:fixEntries(d.entries)};
   });
   return data[key];
 }
