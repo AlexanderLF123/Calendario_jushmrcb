@@ -493,11 +493,13 @@ let view        = 'month';
 let serverReady = false;
 
 function firebaseToArray(val, size) {
+  if (val === null || val === undefined) return Array.from({length: size}, () => null);
   if (Array.isArray(val)) {
-    while (val.length < size) val.push(null);
-    return val;
+    const arr = val.slice();
+    while (arr.length < size) arr.push(null);
+    return arr;
   }
-  if (val && typeof val === 'object') {
+  if (typeof val === 'object') {
     const arr = [];
     for (let i = 0; i < size; i++) {
       arr.push(val[i] !== undefined ? val[i] : null);
@@ -507,22 +509,29 @@ function firebaseToArray(val, size) {
   return Array.from({length: size}, () => null);
 }
 
+function fixEntries(entries) {
+  if (!entries) return [];
+  if (Array.isArray(entries)) return entries;
+  if (typeof entries === 'object') return Object.values(entries);
+  return [];
+}
+
 async function loadSharedState(){
   try{
     const snap = await db.ref('calendario').once('value');
     const state = snap.val();
     if(state){
-      conductores = firebaseToArray(state.conductores, 5).map(v => v || '');
+      conductores = firebaseToArray(state.conductores, 5).map(v => (v || '').toString());
       const rawData = state.data && typeof state.data === 'object' ? state.data : {};
       data = {};
       for (const key in rawData) {
         const day = rawData[key];
         if (day && day.drivers) {
-          data[key] = { drivers: firebaseToArray(day.drivers, 5).map(d => {
-            if (!d || !d.entries) return {entries: []};
-            d.entries = Array.isArray(d.entries) ? d.entries : Object.values(d.entries);
-            return d;
-          })};
+          const driversArr = firebaseToArray(day.drivers, 5).map(d => {
+            if (!d) return {entries: []};
+            return { entries: fixEntries(d.entries) };
+          });
+          data[key] = { drivers: driversArr };
         }
       }
     }
@@ -537,7 +546,27 @@ async function loadSharedState(){
 async function persistState(){
   if(serverReady){
     try{
-      await db.ref('calendario').set({conductores, data});
+      const cleanData = {};
+      for(const key in data){
+        const day = data[key];
+        if(day && day.drivers){
+          cleanData[key] = {
+            drivers: day.drivers.map(d => {
+              if(!d) return {entries:[]};
+              return {entries: fixEntries(d.entries).map(e => ({
+                horaSalida: e.horaSalida || '',
+                inspecciones: e.inspecciones || '',
+                comision: e.comision || '',
+                retorno: e.retorno || '',
+                personal: e.personal || '',
+                obs: e.obs || '',
+                placa: e.placa || ''
+              }))};
+            })
+          };
+        }
+      }
+      await db.ref('calendario').set({conductores, data: cleanData});
     }catch(err){
       showToast('No se pudo guardar en la nube');
     }
@@ -559,7 +588,10 @@ function emptyDrivers(){return Array.from({length:5},()=>({entries:[]}))}
 function getDayData(key){
   if(!data[key]) data[key]={drivers:emptyDrivers()};
   while(data[key].drivers.length<5) data[key].drivers.push({entries:[]});
-  data[key].drivers.forEach(d=>{if(!d.entries)d.entries=[]});
+  data[key].drivers.forEach(d=>{
+    if(!d) return;
+    d.entries = fixEntries(d.entries);
+  });
   return data[key];
 }
 function hasDayData(key){
