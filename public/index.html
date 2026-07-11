@@ -590,15 +590,20 @@ function getDayData(key){
   var dr=data[key].drivers;
   if(!Array.isArray(dr)){
     var fixed=[];
-    for(var i=0;i<5;i++) fixed.push(dr[i]||null);
+    if(dr&&typeof dr==='object'){
+      for(var i=0;i<5;i++){fixed.push(dr[i]||null);}
+    }
     data[key].drivers=fixed;
     dr=fixed;
   }
-  while(dr.length<5) dr.push(null);
-  data[key].drivers=dr.map(function(d){
-    if(!d||typeof d!=='object') return {entries:[]};
-    return {entries:fixEntries(d.entries)};
-  });
+  var clean=[];
+  for(var i=0;i<5;i++){
+    var d=i<dr.length?dr[i]:null;
+    if(!d||typeof d!=='object') d={entries:[]};
+    if(!Array.isArray(d.entries)) d.entries=fixEntries(d.entries);
+    clean.push(d);
+  }
+  data[key].drivers=clean;
   return data[key];
 }
 function hasDayData(key){
@@ -728,7 +733,7 @@ function selectDay(dt){
     '<h3>'+fmtFull(dt)+'</h3><p>Edita las comisiones de cada conductor</p>';
   document.getElementById('detailFooter').style.display='flex';
 
-  const totalEnt  = dayData.drivers.reduce(function(s,d){return s+(d.entries?d.entries.length:0)},0);
+  const totalEnt  = dayData.drivers.reduce(function(s,d){return s+((d&&d.entries)?d.entries.length:0)},0);
   const unidadesArr = [];
   dayData.drivers.forEach(function(d){
     if(d&&d.entries){d.entries.forEach(function(e){if(e&&e.placa)unidadesArr.push(e.placa)})}
@@ -741,8 +746,8 @@ function selectDay(dt){
   '</div>';
 
   for(var ci=0;ci<5;ci++){
-    var d=dayData.drivers[ci];
-    var entries=d.entries||[];
+    var d=dayData.drivers[ci]||{entries:[]};
+    var entries=Array.isArray(d.entries)?d.entries:[];
     var cnt=entries.length;
     var nm=dName(ci)||'Conductor '+(ci+1);
     html+='<div class="driver-section ds'+ci+'" id="dsc'+ci+'">'+
