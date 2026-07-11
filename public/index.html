@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calendario de Inspecciones</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -262,6 +264,16 @@ body::after{
 </div>
 
 <script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAFREUO_r9eAlMxcMIMY2R0LKJvQ4zgjJs",
+  authDomain: "calendariojushr.firebaseapp.com",
+  projectId: "calendariojushr",
+  storageBucket: "calendariojushr.firebasestorage.app",
+  messagingSenderId: "1011396869341",
+  appId: "1:1011396869341:web:3d445c0838167005b1af34"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 // water drop click
 document.getElementById('waterDrop').addEventListener('click', function(){
   const rect=this.getBoundingClientRect(), cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
@@ -482,11 +494,12 @@ let serverReady = false;
 
 async function loadSharedState(){
   try{
-    const res = await fetch('/api/state',{cache:'no-store'});
-    if(!res.ok) throw new Error('No se pudo leer el servidor');
-    const state = await res.json();
-    conductores = Array.isArray(state.conductores) ? state.conductores : DEFAULTS.slice();
-    data = state.data && typeof state.data === 'object' ? state.data : {};
+    const snap = await db.ref('calendario').once('value');
+    const state = snap.val();
+    if(state){
+      conductores = Array.isArray(state.conductores) ? state.conductores : DEFAULTS.slice();
+      data = state.data && typeof state.data === 'object' ? state.data : {};
+    }
     serverReady = true;
   }catch(err){
     conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
@@ -497,12 +510,11 @@ async function loadSharedState(){
 
 async function persistState(){
   if(serverReady){
-    const res = await fetch('/api/state',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({conductores,data})
-    });
-    if(!res.ok) throw new Error('No se pudo guardar en red');
+    try{
+      await db.ref('calendario').set({conductores, data});
+    }catch(err){
+      showToast('No se pudo guardar en la nube');
+    }
   }
   localStorage.setItem('cond5',JSON.stringify(conductores));
   localStorage.setItem('sched5',JSON.stringify(data));
