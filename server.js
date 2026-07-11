@@ -43,6 +43,28 @@ async function ensureDb() {
   }
 }
 
+async function syncBundledData() {
+  const bundled = path.join(ROOT, 'data', 'inspecciones.json');
+  try {
+    const raw = await fs.readFile(DB_FILE, 'utf8');
+    const current = JSON.parse(raw || '{}');
+    const currentEntries = Object.keys(current.data || {}).length;
+    if (currentEntries <= 1) {
+      const bundledRaw = await fs.readFile(bundled, 'utf8');
+      const bundledData = JSON.parse(bundledRaw);
+      const bundledEntries = Object.keys(bundledData.data || {}).length;
+      if (bundledEntries > currentEntries) {
+        const merged = {
+          conductores: current.conductores || bundledData.conductores,
+          data: { ...bundledData.data, ...current.data }
+        };
+        await saveState(merged);
+        console.log(`Sincronizados ${bundledEntries} registros del repositorio`);
+      }
+    }
+  } catch {}
+}
+
 function normalizeState(parsed) {
   return {
     conductores: Array.isArray(parsed.conductores) ? parsed.conductores : DEFAULT_STATE.conductores,
@@ -138,6 +160,7 @@ const server = http.createServer(async (req, res) => {
 
 (async () => {
   await ensureDb();
+  await syncBundledData();
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`Calendario de inspecciones listo: http://localhost:${PORT}`);
     console.log(`Datos: ${DB_FILE}`);
