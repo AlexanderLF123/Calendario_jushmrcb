@@ -651,17 +651,12 @@ function selectDay(dt){
   document.getElementById('detailFooter').style.display='flex';
 
   // Summary
-  const totalInsp = dayData.drivers.reduce((s,d)=>s+d.entries.reduce((ss,e)=>ss+(parseInt(e.inspecciones)||0),0),0);
-  const actCond   = dayData.drivers.filter(d=>d.entries.length>0).length;
   const totalEnt  = dayData.drivers.reduce((s,d)=>s+d.entries.length,0);
-  const distritos = new Set(dayData.drivers.flatMap(d=>d.entries.map(e=>e.comision).filter(Boolean))).size;
+  const unidades  = new Set(dayData.drivers.flatMap(d=>d.entries.map(e=>e.placa).filter(Boolean))).size;
 
-  let html=`<div class="summary-row">
-    <div class="scard"><span class="sv" style="color:var(--c1)">${actCond}</span><div class="sl">Conductores</div></div>
-    <div class="scard"><span class="sv" style="color:var(--c2)">${totalEnt}</span><div class="sl">Comisiones</div></div>
-    <div class="scard"><span class="sv" style="color:var(--c3)">${totalInsp}</span><div class="sl">Inspecciones</div></div>
-    <div class="scard"><span class="sv" style="color:var(--c4)">${distritos}</span><div class="sl">Distritos</div></div>
-    <div class="scard"><span class="sv" style="color:var(--c5)">${dayData.drivers.reduce((s,d)=>s+d.entries.filter(e=>e.personal).length,0)}</span><div class="sl">Con personal</div></div>
+  let html=`<div class="summary-row" style="grid-template-columns:1fr 1fr">
+    <div class="scard"><span class="sv" style="color:var(--c1)">${unidades}</span><div class="sl">Unidades Vehiculares</div></div>
+    <div class="scard"><span class="sv" style="color:var(--c2)">${totalEnt}</span><div class="sl">Salidas</div></div>
   </div>`;
 
   // Driver sections
