@@ -1,0 +1,482 @@
+{
+  "conductores": [
+    "JACK",
+    "DINO",
+    "MIGUEL",
+    "GODOY",
+    ""
+  ],
+  "data": {
+    "2026-06-22": {
+      "drivers": [
+        {
+          "entries": [
+            {
+              "horaSalida": "08:00",
+              "inspecciones": "",
+              "comision": "UNALM",
+              "retorno": "",
+              "personal": "RETROEXCAVADORA",
+              "obs": "Trabajos de Limpieza"
+            }
+          ]
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:00",
+              "inspecciones": "",
+              "comision": "UNALM",
+              "retorno": "",
+              "personal": "VOLQUETE",
+              "obs": "Trabajos de limpieza"
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-06-26": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:00",
+              "inspecciones": "",
+              "comision": "BACKUS",
+              "retorno": "",
+              "personal": "Jimmi Limaymanta ",
+              "obs": "Recojo de productos para el aniversario JUSHMRCB"
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-06-23": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-01": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-02": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "10:00",
+              "inspecciones": "",
+              "comision": "Local de chaclacayo",
+              "retorno": "12:46",
+              "personal": "OPEMADE",
+              "obs": "Busca de expedientes en el Local de chaclacayo."
+            }
+          ]
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-08": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "09:00",
+              "inspecciones": "",
+              "comision": "C.U. ATE",
+              "retorno": "",
+              "personal": "JULIA SAUCEDO",
+              "obs": "VERIFICACION Y GRABACIÓN DEL PROYECTO ATU E25"
+            }
+          ]
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:30",
+              "inspecciones": "1",
+              "comision": "ALA CHIRILU",
+              "retorno": "",
+              "personal": "JUAN CABREJOS",
+              "obs": "REUNION CON PRESIDENCIA EN ALA CHIRILU"
+            }
+          ]
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:30",
+              "inspecciones": "2",
+              "comision": "C.U. CHACRASANA",
+              "retorno": "",
+              "personal": "ROSALIA GONZALES",
+              "obs": "INSPECCION EN CHACRASANA Y CARAPONGO"
+            }
+          ]
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-09": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "10:00",
+              "inspecciones": "",
+              "comision": "recojo de camionta",
+              "retorno": "",
+              "personal": "recojo de la camioneta",
+              "obs": "CLA702"
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "10:00",
+              "inspecciones": "1",
+              "comision": "C.U. HUACHIPA",
+              "retorno": "",
+              "personal": "STEVEN MAMANI",
+              "obs": ""
+            }
+          ]
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-10": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:00",
+              "inspecciones": "",
+              "comision": "DIA LIBRE",
+              "retorno": "16:45",
+              "personal": "",
+              "obs": "reposición por dia trabajado el día sábado 04 "
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-07": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "09:00",
+              "inspecciones": "",
+              "comision": "C.U. CHACRASANA",
+              "retorno": "",
+              "personal": "GENESSIS LESCANO",
+              "obs": ""
+            }
+          ]
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "09:00",
+              "inspecciones": "1",
+              "comision": "C.U. ATE",
+              "retorno": "",
+              "personal": "KATHERIN ZAVALETA",
+              "obs": "REUNION CON ATU"
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-06": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-13": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:30",
+              "inspecciones": "1",
+              "comision": "C.U. CHACLACAYO",
+              "retorno": "",
+              "personal": "KATHERIN ZAVELETA",
+              "obs": "REUNION CON MA MUN CHACLACAYO Y ALA CHIRILU"
+            },
+            {
+              "horaSalida": "",
+              "inspecciones": "",
+              "comision": "",
+              "retorno": "",
+              "personal": "",
+              "obs": ""
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-14": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "09:30",
+              "inspecciones": "1",
+              "comision": "C.U. HUACHIPA",
+              "retorno": "",
+              "personal": "STEVEN MAMANI",
+              "obs": ""
+            },
+            {
+              "horaSalida": "",
+              "inspecciones": "",
+              "comision": "",
+              "retorno": "",
+              "personal": "",
+              "obs": ""
+            }
+          ]
+        },
+        {
+          "entries": [
+            {
+              "horaSalida": "08:30",
+              "inspecciones": "1",
+              "comision": "C.U. CHACRASANA",
+              "retorno": "",
+              "personal": "LEONARDO SEA",
+              "obs": ""
+            },
+            {
+              "horaSalida": "10:30",
+              "inspecciones": "1",
+              "comision": "C.U. LA ESTRELLA",
+              "retorno": "",
+              "personal": "LEONARDO SEA",
+              "obs": ""
+            },
+            {
+              "horaSalida": "12:30",
+              "inspecciones": "1",
+              "comision": "C.U. ATE",
+              "retorno": "02:00",
+              "personal": "LEONARDO SEA",
+              "obs": ""
+            }
+          ]
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-15": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-17": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-05": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    },
+    "2026-07-04": {
+      "drivers": [
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        },
+        {
+          "entries": []
+        }
+      ]
+    }
+  }
+}
