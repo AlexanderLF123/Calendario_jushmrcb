@@ -33,7 +33,13 @@ async function ensureDb() {
   try {
     await fs.access(DB_FILE);
   } catch {
-    await fs.writeFile(DB_FILE, JSON.stringify(DEFAULT_STATE, null, 2), 'utf8');
+    const bundled = path.join(ROOT, 'data', 'inspecciones.json');
+    try {
+      const initial = await fs.readFile(bundled, 'utf8');
+      await fs.writeFile(DB_FILE, initial, 'utf8');
+    } catch {
+      await fs.writeFile(DB_FILE, JSON.stringify(DEFAULT_STATE, null, 2), 'utf8');
+    }
   }
 }
 
