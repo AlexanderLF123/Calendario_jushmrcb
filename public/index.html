@@ -587,10 +587,10 @@ const dName = i => conductores[i] || `Conductor ${i+1}`;
 function emptyDrivers(){return Array.from({length:5},()=>({entries:[]}))}
 function getDayData(key){
   if(!data[key]) data[key]={drivers:emptyDrivers()};
-  while(data[key].drivers.length<5) data[key].drivers.push({entries:[]});
-  data[key].drivers.forEach(d=>{
-    if(!d) return;
-    d.entries = fixEntries(d.entries);
+  while(data[key].drivers.length<5) data[key].drivers.push(null);
+  data[key].drivers = data[key].drivers.map(d => {
+    if(!d) return {entries:[]};
+    return {entries: fixEntries(d.entries)};
   });
   return data[key];
 }
