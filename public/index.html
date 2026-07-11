@@ -492,13 +492,39 @@ let selDate     = null;
 let view        = 'month';
 let serverReady = false;
 
+function firebaseToArray(val, size) {
+  if (Array.isArray(val)) {
+    while (val.length < size) val.push(null);
+    return val;
+  }
+  if (val && typeof val === 'object') {
+    const arr = [];
+    for (let i = 0; i < size; i++) {
+      arr.push(val[i] !== undefined ? val[i] : null);
+    }
+    return arr;
+  }
+  return Array.from({length: size}, () => null);
+}
+
 async function loadSharedState(){
   try{
     const snap = await db.ref('calendario').once('value');
     const state = snap.val();
     if(state){
-      conductores = Array.isArray(state.conductores) ? state.conductores : DEFAULTS.slice();
-      data = state.data && typeof state.data === 'object' ? state.data : {};
+      conductores = firebaseToArray(state.conductores, 5).map(v => v || '');
+      const rawData = state.data && typeof state.data === 'object' ? state.data : {};
+      data = {};
+      for (const key in rawData) {
+        const day = rawData[key];
+        if (day && day.drivers) {
+          data[key] = { drivers: firebaseToArray(day.drivers, 5).map(d => {
+            if (!d || !d.entries) return {entries: []};
+            d.entries = Array.isArray(d.entries) ? d.entries : Object.values(d.entries);
+            return d;
+          })};
+        }
+      }
     }
     serverReady = true;
   }catch(err){
