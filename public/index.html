@@ -402,9 +402,9 @@ document.getElementById('waterDrop').addEventListener('click', function(){
   <div class="cal-nav">
     <h2 id="monthTitle"></h2>
     <div class="nav-btns">
-      <button class="btn btn-navy btn-sm" onclick="chMonth(-1)">‹</button>
+      <button class="btn btn-navy btn-sm" onclick="chNav(-1)">‹</button>
       <button class="btn btn-navy btn-sm" onclick="goToday()">Hoy</button>
-      <button class="btn btn-navy btn-sm" onclick="chMonth(1)">›</button>
+      <button class="btn btn-navy btn-sm" onclick="chNav(1)">›</button>
     </div>
   </div>
 
@@ -756,8 +756,11 @@ function renderMonth(){
 function renderWeek(){
   const dow=curDate.getDay();
   const ws=new Date(curDate); ws.setDate(curDate.getDate()-dow);
+  const we=new Date(ws); we.setDate(ws.getDate()+6);
   const days=Array.from({length:7},(_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d;});
   const DAY_NAMES=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const opts={day:'numeric',month:'short'};
+  document.getElementById('monthTitle').textContent=ws.toLocaleDateString('es-PE',opts)+' – '+we.toLocaleDateString('es-PE',opts);
   const tbl=document.getElementById('weekTable');
   tbl.innerHTML='';
 
@@ -1111,7 +1114,12 @@ function updateLegend(){
 }
 
 // ===================== NAV / VIEW =====================
-function chMonth(d){curDate.setMonth(curDate.getMonth()+d);render()}
+function chNav(d){
+  if(view==='week'){curDate.setDate(curDate.getDate()+d*7)}
+  else if(view==='conductores'){}
+  else{curDate.setMonth(curDate.getMonth()+d)}
+  render();
+}
 function goToday(){curDate=new Date();render()}
 function setView(v){
   view=v;
