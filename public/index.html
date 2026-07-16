@@ -908,9 +908,7 @@ async function addEntry(ci){
   const key=dk(selDate);
   const dayData=getDayData(key);
   dayData.drivers[ci].entries.push({});
-  await saveSilent();
   selectDay(selDate);
-  // scroll to new entry
   setTimeout(()=>{
     const el=document.getElementById('dbody'+ci);
     if(el) el.scrollTop=el.scrollHeight;
@@ -933,12 +931,12 @@ async function saveEntry(ci,ei){
   const key=dk(selDate);
   const dayData=getDayData(key);
   const entry=dayData.drivers[ci].entries[ei];
-  if(!entry.obs||!entry.obs.trim()){
-    alert('⚠️ El campo "Detalles de la Inspección" es obligatorio');
-    return;
-  }
   await saveSilent();
-  alert('✅ Comisión guardada correctamente');
+  if(!entry.obs||!entry.obs.trim()){
+    showToast('⚠️ Falta el campo "Detalles de la Inspección"');
+  } else {
+    showToast('✅ Comisión guardada');
+  }
   selectDay(selDate);
 }
 
@@ -970,6 +968,21 @@ async function saveSilent(){
   readFromDOM();
   try{ await persistState(); }catch(err){ showToast('No se pudo guardar en red'); }
 }
+
+// Auto-save on input change (2s debounce)
+var autoSaveTimer=null;
+function scheduleAutoSave(){
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer=setTimeout(function(){
+    if(selDate){ saveSilent(); }
+  },2000);
+}
+document.addEventListener('input',function(e){
+  if(e.target.closest&&e.target.closest('.detail-body')) scheduleAutoSave();
+});
+document.addEventListener('change',function(e){
+  if(e.target.closest&&e.target.closest('.detail-body')) scheduleAutoSave();
+});
 
 // ===================== VALIDACIONES =====================
 function timeToMin(t){
