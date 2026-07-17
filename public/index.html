@@ -855,9 +855,10 @@ function renderWeek(){
   let hrow='<thead><tr><th style="width:64px;background:var(--navy2)">Conductor</th>';
   days.forEach((d,i)=>{
     const today=isT(d), sel=sameD(d,selDate);
-    const isNL=data[key]&&data[key].noLaborable;
+    const hdrKey=dk(d);
+    const isNL=data[hdrKey]&&data[hdrKey].noLaborable;
     const bg=today?'background:var(--amber);color:var(--navy)':isNL?'background:#6b7280;color:#fff':sel?'background:var(--navy3)':'';
-    hrow+=`<th style="${bg};cursor:pointer" onclick="selectDay('${dk(d)}')">${DAY_NAMES[i]}<br><span style="font-size:14px;font-weight:800">${d.getDate()}</span>${isNL?'<br><span style="font-size:9px">🚫</span>':''}</th>`;
+    hrow+=`<th style="${bg};cursor:pointer" onclick="selectDay('${hdrKey}')">${DAY_NAMES[i]}<br><span style="font-size:14px;font-weight:800">${d.getDate()}</span>${isNL?'<br><span style="font-size:9px">🚫</span>':''}</th>`;
   });
   hrow+='</tr></thead>';
   tbl.innerHTML=hrow;
