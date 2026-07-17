@@ -53,6 +53,8 @@ body.dark .driver-body{background:#1e293b}
 body.dark .modal-box{background:#1e293b;color:#e2e8f0}
 body.dark .day-cell.no-laborable{background:#1e293b;opacity:.6}
 body.dark .dname-input{color:#ffffff}
+body.dark #connMonitor{background:rgba(16,185,129,.2);border-color:rgba(16,185,129,.4)}
+body.dark #offlineBanner{background:#991b1b}
 /* Botón tema */
 .btn-theme{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:var(--radius-sm);padding:5px 10px;cursor:pointer;font-size:13px;transition:background .2s}
 .btn-theme:hover{background:rgba(255,255,255,.15)}
@@ -341,6 +343,8 @@ body::after{
   .dots{gap:1px}
   .dot{width:4px;height:4px}
   .cal-nav h2{font-size:13px}
+  #connMonitor{font-size:9px;padding:3px 7px;bottom:8px;left:8px}
+  #connDot{width:6px;height:6px}
 }
 </style>
 </head>
@@ -495,6 +499,17 @@ document.getElementById('waterDrop').addEventListener('click', function(){
 
 </div><!-- end main-area -->
 </div><!-- end app -->
+
+<!-- FIREBASE CONNECTION MONITOR (outside .app so login is never blocked) -->
+<div id="connMonitor" style="position:fixed;bottom:12px;left:12px;display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;z-index:998;transition:all .3s;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);backdrop-filter:blur(6px)">
+  <span id="connDot" style="width:8px;height:8px;border-radius:50%;background:#10b981;transition:background .3s"></span>
+  <span id="connText">Verificando...</span>
+  <button id="connRetry" onclick="retryFirebase()" style="display:none;border:none;background:rgba(239,68,68,.2);color:#ef4444;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px">Reintentar</button>
+</div>
+<div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:5000;padding:10px 16px;background:#dc2626;color:#fff;font-size:13px;font-weight:700;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.3)">
+  ⚠️ SIN CONEXIÓN A FIREBASE — Los cambios se guardan SOLO en esta PC y NO son visibles para otros.
+  <button onclick="retryFirebase()" style="margin-left:12px;border:2px solid #fff;background:transparent;color:#fff;border-radius:6px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">Reintentar</button>
+</div>
 
 <!-- MODAL CONDUCTORES -->
 <div class="overlay" id="condOverlay">
@@ -707,7 +722,12 @@ async function loadSharedState(){
 }
 
 async function persistState(){
+  localStorage.setItem('cond5',JSON.stringify(conductores));
+  localStorage.setItem('sched5',JSON.stringify(data));
+  localStorage.setItem('notas6',JSON.stringify(notas));
+  localStorage.setItem('reuniones5',JSON.stringify(reuniones));
   if(serverReady){
+    showSaving();
     try{
       const cleanData = {};
       const nlBackup = {};
@@ -735,14 +755,69 @@ async function persistState(){
       }
       await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones});
       await db.ref('calendario/nlDays').set(nlBackup);
+      showSaved();
     }catch(err){
-      showToast('No se pudo guardar en la nube');
+      showError();
+      showToast('⚠️ No se pudo guardar en Firebase');
     }
+  }else{
+    if(connStatus!=='offline'&&connStatus!=='error') setConnStatus('offline');
   }
   localStorage.setItem('cond5',JSON.stringify(conductores));
   localStorage.setItem('sched5',JSON.stringify(data));
   localStorage.setItem('notas6',JSON.stringify(notas));
   localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+}
+
+// ===================== CONNECTION MONITOR =====================
+var connStatus='unknown';
+var retryTimer=null;
+var retryCount=0;
+function isAppVisible(){var a=document.querySelector('.app');return a&&!a.classList.contains('hidden');}
+function setConnStatus(s){
+  connStatus=s;
+  var dot=document.getElementById('connDot');
+  var txt=document.getElementById('connText');
+  var retry=document.getElementById('connRetry');
+  var banner=document.getElementById('offlineBanner');
+  if(!dot||!txt) return;
+  if(s==='connected'){
+    dot.style.background='#10b981';txt.textContent='Conectado a Firebase';
+    retry.style.display='none';
+    if(banner) banner.style.display='none';
+    retryCount=0;
+  }else if(s==='saving'){
+    dot.style.background='#f59e0b';txt.textContent='Guardando...';
+    retry.style.display='none';
+  }else if(s==='offline'||s==='error'){
+    dot.style.background='#ef4444';txt.textContent='Sin Firebase — solo local';
+    retry.style.display='inline-block';
+    if(banner && isAppVisible()) banner.style.display='block';
+    scheduleRetry();
+  }
+}
+function showSaving(){setConnStatus('saving');}
+function showSaved(){if(connStatus==='offline'||connStatus==='error')return;setConnStatus('connected');}
+function showError(){setConnStatus('offline');}
+function scheduleRetry(){
+  if(retryTimer)clearTimeout(retryTimer);
+  retryCount++;
+  retryTimer=setTimeout(retryFirebase,Math.min(retryCount*5000,30000));
+}
+function retryFirebase(){
+  if(retryTimer)clearTimeout(retryTimer);
+  setConnStatus('saving');
+  db.ref('.info/connected').once('value').then(function(snap){
+    if(snap.val()===true){setConnStatus('connected');persistState();}
+    else setConnStatus('offline');
+  }).catch(function(){setConnStatus('error');});
+}
+function initConnMonitor(){
+  if(!window.firebase||!firebase.database) return;
+  firebase.database().ref('.info/connected').on('value',function(snap){
+    if(snap.val()===true){if(connStatus!=='saving')setConnStatus('connected');}
+    else setConnStatus('offline');
+  });
 }
 
 // ===================== UTILS =====================
@@ -1591,6 +1666,7 @@ async function initApp(){
   await loadSharedState();
   updateLegend();
   renderMonth();
+  initConnMonitor();
 }
 initApp();
 
@@ -1608,6 +1684,7 @@ function doLogin(){
     localStorage.setItem('jushmrcb_auth','1');
     document.getElementById('loginOverlay').style.display='none';
     document.querySelector('.app').classList.remove('hidden');
+    if(connStatus==='offline'||connStatus==='error'){var b=document.getElementById('offlineBanner');if(b)b.style.display='block';}
   } else {
     err.textContent='Usuario o contraseña incorrectos';
   }
@@ -1615,6 +1692,7 @@ function doLogin(){
 if(localStorage.getItem('jushmrcb_auth')){
   document.getElementById('loginOverlay').style.display='none';
   document.querySelector('.app').classList.remove('hidden');
+  if(connStatus==='offline'||connStatus==='error'){var b=document.getElementById('offlineBanner');if(b)b.style.display='block';}
 }
 document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('loginUser').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
