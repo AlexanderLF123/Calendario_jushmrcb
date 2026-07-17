@@ -185,17 +185,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .toast.show{opacity:1;transform:translateY(0)}
 
 /* POST-IT NOTES */
-.postit{position:relative;padding:14px 14px 30px;border-radius:3px;min-height:160px;font-size:14px;line-height:1.6;word-wrap:break-word;box-shadow:2px 3px 6px rgba(0,0,0,.15);transition:transform .15s,box-shadow .15s;cursor:default}
+.postit{position:relative;padding:10px 10px 22px;border-radius:2px;min-height:120px;font-size:11px;line-height:1.4;word-wrap:break-word;box-shadow:2px 3px 6px rgba(0,0,0,.15);transition:transform .15s,box-shadow .15s;cursor:default}
 .postit:hover{transform:translateY(-2px) rotate(-.5deg);box-shadow:3px 5px 10px rgba(0,0,0,.22)}
-.postit::before{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 28px 28px 0;border-color:transparent rgba(0,0,0,.08) transparent transparent}
-.postit textarea{width:100%;min-height:90px;border:none;background:transparent;resize:vertical;font-size:14px;font-family:inherit;line-height:1.6;color:inherit;outline:none;padding:0;margin:0}
-.postit-actions{position:absolute;bottom:6px;right:8px;display:flex;gap:5px;opacity:0;transition:opacity .15s}
+.postit::before{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 21px 21px 0;border-color:transparent rgba(0,0,0,.08) transparent transparent}
+.postit textarea{width:100%;min-height:65px;border:none;background:transparent;resize:vertical;font-size:11px;font-family:inherit;line-height:1.4;color:inherit;outline:none;padding:0;margin:0}
+.postit-actions{position:absolute;bottom:5px;right:7px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
 .postit:hover .postit-actions{opacity:1}
-.postit-btn{border:none;background:rgba(0,0,0,.08);border-radius:5px;padding:2px 7px;cursor:pointer;font-size:12px;line-height:1.4;transition:background .15s}
+.postit-btn{border:none;background:rgba(0,0,0,.08);border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;line-height:1.4;transition:background .15s}
 .postit-btn:hover{background:rgba(0,0,0,.18)}
-.postit-colors{position:absolute;top:6px;left:6px;display:none;gap:4px;z-index:2}
+.postit-colors{position:absolute;top:5px;left:5px;display:none;gap:3px;z-index:2}
 .postit:hover .postit-colors{display:flex}
-.postit-clr{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);cursor:pointer;transition:transform .12s}
+.postit-clr{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6);cursor:pointer;transition:transform .12s}
 .postit-clr:hover{transform:scale(1.25)}
 .postit-yellow{background:#FFF9C4;color:#5D4037}
 .postit-blue{background:#BBDEFB;color:#1A237E}
@@ -451,7 +451,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
         <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">📝 Notas</span>
         <button class="btn btn-ghost btn-sm" onclick="addNota()" style="padding:2px 8px;font-size:10px">+ Nueva nota</button>
       </div>
-      <div id="notasGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px"></div>
+      <div id="notasGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px"></div>
     </div>
   </div>
 
@@ -674,6 +674,7 @@ async function loadSharedState(){
       else notas = [];
       reuniones = state.reuniones || {};
       const rawData = state.data && typeof state.data === 'object' ? state.data : {};
+      const nlDays = state.nlDays || {};
       data = {};
       for (const key in rawData) {
         const day = rawData[key];
@@ -681,9 +682,17 @@ async function loadSharedState(){
           const nCond = conductores.length;
           const driversArr = firebaseToArray(day.drivers, nCond).map(d => {
             if (!d) return {entries: []};
-            return { entries: fixEntries(d.entries), noLaborable: !!d.noLaborable };
+            return { entries: fixEntries(d.entries) };
           });
-          data[key] = { drivers: driversArr, noLaborable: !!day.noLaborable, nlDesc: day.nlDesc || '' };
+          var isNL = !!day.noLaborable;
+          var nlDescVal = day.nlDesc || '';
+          if(!isNL && nlDays[key] && nlDays[key].nl){ isNL=true; nlDescVal=nlDescVal||nlDays[key].desc||''; }
+          data[key] = { drivers: driversArr, noLaborable: isNL, nlDesc: nlDescVal };
+        }
+      }
+      for(const key in nlDays){
+        if(!data[key] && nlDays[key].nl){
+          data[key]={drivers:Array.from({length:conductores.length},()=>({entries:[]})),noLaborable:true,nlDesc:nlDays[key].desc||''};
         }
       }
     }
@@ -703,6 +712,7 @@ async function persistState(){
   if(serverReady){
     try{
       const cleanData = {};
+      const nlBackup = {};
       for(const key in data){
         const day = data[key];
         if(day && day.drivers){
@@ -722,9 +732,11 @@ async function persistState(){
               }))};
             })
           };
+          if(day.noLaborable) nlBackup[key]={nl:true,desc:day.nlDesc||''};
         }
       }
       await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones});
+      await db.ref('calendario/nlDays').set(nlBackup);
     }catch(err){
       showToast('No se pudo guardar en la nube');
     }
