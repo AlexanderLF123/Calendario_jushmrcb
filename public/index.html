@@ -185,17 +185,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .toast.show{opacity:1;transform:translateY(0)}
 
 /* POST-IT NOTES */
-.postit{position:relative;padding:10px 10px 24px;border-radius:2px;min-height:90px;font-size:12px;line-height:1.5;word-wrap:break-word;box-shadow:2px 3px 6px rgba(0,0,0,.15);transition:transform .15s,box-shadow .15s;cursor:default}
+.postit{position:relative;padding:14px 14px 30px;border-radius:3px;min-height:160px;font-size:14px;line-height:1.6;word-wrap:break-word;box-shadow:2px 3px 6px rgba(0,0,0,.15);transition:transform .15s,box-shadow .15s;cursor:default}
 .postit:hover{transform:translateY(-2px) rotate(-.5deg);box-shadow:3px 5px 10px rgba(0,0,0,.22)}
-.postit::before{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 22px 22px 0;border-color:transparent rgba(0,0,0,.08) transparent transparent}
-.postit textarea{width:100%;min-height:50px;border:none;background:transparent;resize:vertical;font-size:12px;font-family:inherit;line-height:1.5;color:inherit;outline:none;padding:0;margin:0}
-.postit-actions{position:absolute;bottom:4px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .15s}
+.postit::before{content:'';position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 28px 28px 0;border-color:transparent rgba(0,0,0,.08) transparent transparent}
+.postit textarea{width:100%;min-height:90px;border:none;background:transparent;resize:vertical;font-size:14px;font-family:inherit;line-height:1.6;color:inherit;outline:none;padding:0;margin:0}
+.postit-actions{position:absolute;bottom:6px;right:8px;display:flex;gap:5px;opacity:0;transition:opacity .15s}
 .postit:hover .postit-actions{opacity:1}
-.postit-btn{border:none;background:rgba(0,0,0,.08);border-radius:4px;padding:1px 5px;cursor:pointer;font-size:10px;line-height:1.4;transition:background .15s}
+.postit-btn{border:none;background:rgba(0,0,0,.08);border-radius:5px;padding:2px 7px;cursor:pointer;font-size:12px;line-height:1.4;transition:background .15s}
 .postit-btn:hover{background:rgba(0,0,0,.18)}
-.postit-colors{position:absolute;top:4px;left:4px;display:none;gap:3px;z-index:2}
+.postit-colors{position:absolute;top:6px;left:6px;display:none;gap:4px;z-index:2}
 .postit:hover .postit-colors{display:flex}
-.postit-clr{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6);cursor:pointer;transition:transform .12s}
+.postit-clr{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);cursor:pointer;transition:transform .12s}
 .postit-clr:hover{transform:scale(1.25)}
 .postit-yellow{background:#FFF9C4;color:#5D4037}
 .postit-blue{background:#BBDEFB;color:#1A237E}
@@ -451,7 +451,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
         <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">📝 Notas</span>
         <button class="btn btn-ghost btn-sm" onclick="addNota()" style="padding:2px 8px;font-size:10px">+ Nueva nota</button>
       </div>
-      <div id="notasGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
+      <div id="notasGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px"></div>
     </div>
   </div>
 
@@ -683,7 +683,7 @@ async function loadSharedState(){
             if (!d) return {entries: []};
             return { entries: fixEntries(d.entries), noLaborable: !!d.noLaborable };
           });
-          data[key] = { drivers: driversArr, noLaborable: !!day.noLaborable };
+          data[key] = { drivers: driversArr, noLaborable: !!day.noLaborable, nlDesc: day.nlDesc || '' };
         }
       }
     }
@@ -708,6 +708,7 @@ async function persistState(){
         if(day && day.drivers){
           cleanData[key] = {
             noLaborable: !!day.noLaborable,
+            nlDesc: day.nlDesc || '',
             drivers: day.drivers.map(d => {
               if(!d) return {entries:[]};
               return {entries: fixEntries(d.entries).map(e => ({
@@ -803,6 +804,14 @@ function renderMonth(){
     const num=document.createElement('div');
     num.className='day-num'; num.textContent=dt.getDate();
     cell.appendChild(num);
+
+    if(!other && data[key] && data[key].noLaborable && data[key].nlDesc){
+      const nlTag=document.createElement('div');
+      nlTag.style.cssText='font-size:8px;color:#dc2626;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px';
+      nlTag.textContent=data[key].nlDesc;
+      nlTag.title=data[key].nlDesc;
+      cell.appendChild(nlTag);
+    }
 
     if(!other && hasDayData(key)){
       const dots=document.createElement('div'); dots.className='dots';
@@ -941,6 +950,7 @@ function renderWeek(){
       if(isNL){
         tbody+=`<td style="${today?'background:#fffbeb;':''}background:#f3f4f6;text-align:center;opacity:.6" onclick="selectDay('${key}')" title="Día no laborable">`;
         tbody+=`<div style="font-size:10px;color:#dc2626;font-weight:700">🚫 No laborable</div>`;
+        if(data[key].nlDesc) tbody+=`<div style="font-size:9px;color:#991b1b;font-weight:600;margin-top:2px" title="${data[key].nlDesc}">${data[key].nlDesc}</div>`;
         tbody+=`</td>`;
       } else {
       tbody+=`<td style="${today?'background:#fffbeb':''}" onclick="selectDay('${key}')" title="Clic para editar">`;
@@ -999,16 +1009,23 @@ function selectDay(dt){
   const key = dk(dt);
   const dayData = getDayData(key);
 
+  var nlChecked = data[key]&&data[key].noLaborable;
   document.getElementById('detailHeader').innerHTML =
     '<div style="display:flex;align-items:center;gap:6px"><button class="mobile-back" onclick="closeDetailMobile()">Volver</button><div style="flex:1"><h3>'+fmtFull(dt)+'</h3><p>Edita las comisiones de cada conductor</p></div>'+
     '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap" title="Marcar como día no laborable">'+
-    '<input type="checkbox" id="noLaborableChk" '+(data[key]&&data[key].noLaborable?'checked':'')+' onchange="toggleNoLaborable()" style="accent-color:#f59e0b">'+
-    '🚫 No laborable</label></div>';
+    '<input type="checkbox" id="noLaborableChk" '+(nlChecked?'checked':'')+' onchange="toggleNoLaborable()" style="accent-color:#f59e0b">'+
+    '🚫 No laborable</label></div>'+
+    (nlChecked?'<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:6px 10px;background:rgba(220,38,38,.15);border-radius:6px;border:1px solid rgba(220,38,38,.3)">'+
+    '<span style="font-size:11px;color:#fca5a5;white-space:nowrap">📝 Motivo:</span>'+
+    '<input id="nlDescInput" type="text" placeholder="Ej: Feriado, capacitación, etc." value="'+((data[key]&&data[key].nlDesc)||'').replace(/"/g,'&quot;')+'" onchange="saveNlDesc()" oninput="saveNlDesc()" style="flex:1;padding:4px 8px;border:1px solid rgba(220,38,38,.4);border-radius:4px;font-size:12px;background:rgba(0,0,0,.2);color:#fff;outline:none">'+
+    '</div>':'');
   document.getElementById('detailFooter').style.display='flex';
 
   if(data[key]&&data[key].noLaborable){
     document.getElementById('detailBody').innerHTML=
-      '<div class="empty"><div class="ei">🚫</div><p><strong>Día no laborable</strong><br>Este día está marcado como no laborable.<br>No se puede programar comisiones.</p>'+
+      '<div class="empty"><div class="ei">🚫</div><p><strong>Día no laborable</strong><br>'+
+      ((data[key]&&data[key].nlDesc)?'<em style="color:#dc2626;font-size:13px">"'+data[key].nlDesc+'"</em><br><br>':'')+
+      'No se puede programar comisiones.</p>'+
       '<p style="margin-top:12px;font-size:11px;color:var(--muted)">Desmarca "No laborable" arriba para habilitar</p></div>';
     renderMonth();
     if(view==='week') renderWeek();
@@ -1068,8 +1085,25 @@ async function toggleNoLaborable(){
   const key=dk(selDate);
   if(!data[key]) data[key]={drivers:emptyDrivers()};
   data[key].noLaborable=!!document.getElementById('noLaborableChk').checked;
-  await saveSilent();
+  if(!data[key].noLaborable) data[key].nlDesc='';
+  await persistState();
+  renderMonth();
+  if(view==='week') renderWeek();
   selectDay(selDate);
+}
+var nlDescTimer=null;
+function saveNlDesc(){
+  if(!selDate) return;
+  const key=dk(selDate);
+  if(!data[key]) return;
+  if(nlDescTimer) clearTimeout(nlDescTimer);
+  nlDescTimer=setTimeout(async function(){
+    var inp=document.getElementById('nlDescInput');
+    if(inp) data[key].nlDesc=inp.value.trim();
+    await persistState();
+    renderMonth();
+    if(view==='week') renderWeek();
+  },1500);
 }
 
 function entryHTML(ci,ei,e){
