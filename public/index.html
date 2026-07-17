@@ -509,7 +509,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
         <label>Descripción</label>
         <input type="text" id="rDesc" placeholder="Detalles (opcional)">
       </div>
-      <button class="btn btn-amber" onclick="addReunion()" style="width:100%">+ Agregar reunión</button>
+      <button class="btn btn-amber" id="rBtnSave" onclick="addReunion()" style="width:100%">+ Agregar reunión</button>
     </div>
     <div id="reunionesList" style="max-height:250px;overflow-y:auto"></div>
     <div class="mactions">
@@ -1052,6 +1052,7 @@ async function addEntry(ci){
   const key=dk(selDate);
   const dayData=getDayData(key);
   dayData.drivers[ci].entries.push({});
+  await saveSilent();
   selectDay(selDate);
   setTimeout(()=>{
     const el=document.getElementById('dbody'+ci);
@@ -1377,28 +1378,49 @@ const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).j
 }
 
 // ===================== REUNIONES =====================
+var editingReunion=null;
 function openReuniones(){
+  editingReunion=null;
   document.getElementById('rFecha').value=dk(new Date());
   document.getElementById('rHora').value='';
   document.getElementById('rTitulo').value='';
   document.getElementById('rDesc').value='';
+  document.getElementById('rBtnSave').textContent='+ Agregar reunión';
   renderReunionesList();
   document.getElementById('reunionesOverlay').classList.add('open');
 }
 function closeReuniones(){document.getElementById('reunionesOverlay').classList.remove('open')}
+function editReunion(id){
+  var r=reuniones[id];
+  if(!r) return;
+  editingReunion=id;
+  document.getElementById('rFecha').value=r.fecha;
+  document.getElementById('rHora').value=r.hora||'';
+  document.getElementById('rTitulo').value=r.titulo;
+  document.getElementById('rDesc').value=r.desc||'';
+  document.getElementById('rBtnSave').textContent='Guardar cambios';
+  document.getElementById('rTitulo').focus();
+}
 async function addReunion(){
   const fecha=document.getElementById('rFecha').value;
   const hora=document.getElementById('rHora').value.trim();
   const titulo=document.getElementById('rTitulo').value.trim();
   const desc=document.getElementById('rDesc').value.trim();
   if(!fecha||!titulo){showToast('⚠️ Fecha y título son obligatorios');return;}
-  const id='r_'+Date.now();
-  reuniones[id]={fecha,hora,titulo,desc};
+  if(editingReunion){
+    reuniones[editingReunion]={fecha,hora,titulo,desc};
+    editingReunion=null;
+    showToast('✅ Reunión actualizada');
+  } else {
+    const id='r_'+Date.now();
+    reuniones[id]={fecha,hora,titulo,desc};
+    showToast('✅ Reunión agregada');
+  }
   await persistState();
-  renderReunionesList();
+  document.getElementById('rBtnSave').textContent='+ Agregar reunión';
   document.getElementById('rTitulo').value='';
   document.getElementById('rDesc').value='';
-  showToast('✅ Reunión agregada');
+  renderReunionesList();
 }
 async function removeReunion(id){
   if(!confirm('¿Eliminar esta reunión?')) return;
@@ -1421,6 +1443,7 @@ function renderReunionesList(){
         <div style="font-size:12px;font-weight:700">${r.titulo}</div>
         ${r.desc?'<div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.desc+'</div>':''}
       </div>
+      <button class="btn btn-ghost btn-sm" onclick="editReunion('${id}')" style="padding:2px 6px;font-size:10px;color:var(--c1)" title="Editar">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="removeReunion('${id}')" style="padding:2px 6px;font-size:10px">✕</button>
     </div>`).join('');
 }
