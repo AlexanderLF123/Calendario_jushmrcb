@@ -51,7 +51,7 @@ body.dark .entry-grid input,body.dark .entry-grid select{background:#334155;colo
 body.dark .entry-card-view{background:#334155;border-color:#475569}
 body.dark .driver-body{background:#1e293b}
 body.dark .modal-box{background:#1e293b;color:#e2e8f0}
-body.dark .day-cell.no-laborable{background:repeating-linear-gradient(135deg,#1e293b,#1e293b 4px,#0f172a 4px,#0f172a 8px);opacity:.5}
+body.dark .day-cell.no-laborable{background:#1e293b;opacity:.6}
 body.dark .dname-input{color:#ffffff}
 body.dark #notasArea{background:#1e293b;color:#e2e8f0;border-color:#475569}
 /* Botón tema */
@@ -95,7 +95,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .day-cell.today{border-color:var(--amber);background:#fffbeb}
 .day-cell.selected{border-color:var(--navy);background:#eff6ff;box-shadow:0 0 0 2px rgba(27,43,75,.12)}
 .day-cell.has-data{border-left:3px solid #93c5fd}
-.day-cell.no-laborable{background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 4px,#e5e7eb 4px,#e5e7eb 8px);opacity:.7}
+.day-cell.no-laborable{background:var(--bg);opacity:.7}
 .day-cell.no-laborable::after{content:'🚫 No laborable';position:absolute;bottom:2px;left:2px;right:2px;font-size:8px;font-weight:700;color:#dc2626;text-align:center;line-height:1.2}
 .day-num{font-size:11px;font-weight:700;margin-bottom:3px}
 .today .day-num{background:var(--navy);color:#fff;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px}
@@ -813,19 +813,22 @@ function renderReunionesPanel(){
   var el=document.getElementById('reunionesPanel');
   if(!el) return;
   var upcoming=getUpcomingReuniones();
-  if(upcoming.length===0){el.innerHTML='';return;}
-  var today=dk(new Date());
-  var html='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">📋 Próximas reuniones</div>';
-  upcoming.forEach(function([id,r]){
-    var isToday=r.fecha===today;
-    var isTomorrow=(function(){var t=new Date();t.setDate(t.getDate()+1);return r.fecha===dk(t)})();
-    var bg=isToday?'background:#fef3c7;border-color:#f59e0b':isTomorrow?'background:#dbeafe;border-color:#3b82f6':'background:var(--surface);border-color:var(--border)';
-    var label=isToday?'HOY':isTomorrow?'MAÑANA':r.fecha.slice(5).replace('-','/');
-    html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid;border-radius:6px;margin-bottom:4px;'+bg+'">'+
-      '<span style="font-size:10px;font-weight:700;min-width:50px;color:'+(isToday?'#b45309':isTomorrow?'#1d4ed8':'var(--muted)')+'">'+label+'</span>'+
-      '<div style="flex:1;min-width:0"><span style="font-size:12px;font-weight:600">'+r.titulo+'</span>'+
-      (r.hora?' <span style="font-size:10px;color:var(--muted)">· '+r.hora+'</span>':'')+'</div></div>';
-  });
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">📋 Reuniones JUSHMRCB</span><button class="btn btn-ghost btn-sm" onclick="openReuniones()" style="padding:2px 8px;font-size:10px">+ Nueva</button></div>';
+  if(upcoming.length===0){
+    html+='<div style="text-align:center;padding:8px;border:1px dashed var(--border);border-radius:6px;color:var(--muted);font-size:11px">Sin reuniones programadas. Haz clic en "+ Nueva" para agregar una.</div>';
+  } else {
+    var today=dk(new Date());
+    upcoming.forEach(function([id,r]){
+      var isToday=r.fecha===today;
+      var isTomorrow=(function(){var t=new Date();t.setDate(t.getDate()+1);return r.fecha===dk(t)})();
+      var bg=isToday?'background:#fef3c7;border-color:#f59e0b':isTomorrow?'background:#dbeafe;border-color:#3b82f6':'background:var(--surface);border-color:var(--border)';
+      var label=isToday?'HOY':isTomorrow?'MAÑANA':r.fecha.slice(5).replace('-','/');
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid;border-radius:6px;margin-bottom:4px;'+bg+'">'+
+        '<span style="font-size:10px;font-weight:700;min-width:50px;color:'+(isToday?'#b45309':isTomorrow?'#1d4ed8':'var(--muted)')+'">'+label+'</span>'+
+        '<div style="flex:1;min-width:0"><span style="font-size:12px;font-weight:600">'+r.titulo+'</span>'+
+        (r.hora?' <span style="font-size:10px;color:var(--muted)">· '+r.hora+'</span>':'')+'</div></div>';
+    });
+  }
   el.innerHTML=html;
 }
 
