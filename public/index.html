@@ -51,7 +51,9 @@ body.dark .entry-grid input,body.dark .entry-grid select{background:#334155;colo
 body.dark .entry-card-view{background:#334155;border-color:#475569}
 body.dark .driver-body{background:#1e293b}
 body.dark .modal-box{background:#1e293b;color:#e2e8f0}
+body.dark .day-cell.no-laborable{background:repeating-linear-gradient(135deg,#1e293b,#1e293b 4px,#0f172a 4px,#0f172a 8px);opacity:.5}
 body.dark .dname-input{color:#ffffff}
+body.dark #notasArea{background:#1e293b;color:#e2e8f0;border-color:#475569}
 /* Botón tema */
 .btn-theme{background:transparent;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:var(--radius-sm);padding:5px 10px;cursor:pointer;font-size:13px;transition:background .2s}
 .btn-theme:hover{background:rgba(255,255,255,.15)}
@@ -93,6 +95,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .day-cell.today{border-color:var(--amber);background:#fffbeb}
 .day-cell.selected{border-color:var(--navy);background:#eff6ff;box-shadow:0 0 0 2px rgba(27,43,75,.12)}
 .day-cell.has-data{border-left:3px solid #93c5fd}
+.day-cell.no-laborable{background:repeating-linear-gradient(135deg,#f3f4f6,#f3f4f6 4px,#e5e7eb 4px,#e5e7eb 8px);opacity:.6}
+.day-cell.no-laborable::after{content:'🚫';position:absolute;bottom:3px;right:3px;font-size:9px}
 .day-num{font-size:11px;font-weight:700;margin-bottom:3px}
 .today .day-num{background:var(--navy);color:#fff;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px}
 .dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}
@@ -381,6 +385,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
   <div class="hbtns">
     <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
     <button class="btn btn-ghost btn-sm" onclick="openModal()">⚙️ Conductores</button>
+    <button class="btn btn-ghost btn-sm" onclick="openReuniones()">📋 Reuniones</button>
     <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 CSV</button>
     <button class="btn btn-amber btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     <button class="btn btn-ghost btn-sm" onclick="logout()" title="Cerrar sesión">🚪</button>
@@ -421,6 +426,11 @@ document.getElementById('waterDrop').addEventListener('click', function(){
       <div class="dn">Mié</div><div class="dn">Jue</div><div class="dn">Vie</div><div class="dn">Sáb</div>
     </div>
     <div class="days-grid" id="daysGrid"></div>
+    <div id="reunionesPanel" style="margin-top:10px"></div>
+    <div id="notasPanel" style="margin-top:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">📝 Notas</div>
+      <textarea id="notasArea" placeholder="Escribe notas generales aquí..." oninput="saveNotas()" style="width:100%;min-height:60px;padding:8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:inherit;resize:vertical;background:var(--surface);color:var(--text)"></textarea>
+    </div>
   </div>
 
   <!-- WEEK -->
@@ -466,7 +476,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
 </div><!-- end main-area -->
 </div><!-- end app -->
 
-<!-- MODAL -->
+<!-- MODAL CONDUCTORES -->
 <div class="overlay" id="condOverlay">
   <div class="modal">
     <h3>⚙️ Nombres de conductores</h3>
@@ -474,6 +484,36 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     <div class="mactions">
       <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-amber" onclick="saveConductores()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REUNIONES -->
+<div class="overlay" id="reunionesOverlay">
+  <div class="modal" style="width:440px">
+    <h3>📋 Reuniones JUSHMRCB</h3>
+    <div id="reunionesForm" style="margin-bottom:14px">
+      <div class="mfield">
+        <label>Fecha</label>
+        <input type="date" id="rFecha">
+      </div>
+      <div class="mfield">
+        <label>Hora</label>
+        <input type="text" id="rHora" placeholder="Ej: 09:00">
+      </div>
+      <div class="mfield">
+        <label>Título</label>
+        <input type="text" id="rTitulo" placeholder="Ej: Reunión mensual">
+      </div>
+      <div class="mfield">
+        <label>Descripción</label>
+        <input type="text" id="rDesc" placeholder="Detalles (opcional)">
+      </div>
+      <button class="btn btn-amber" onclick="addReunion()" style="width:100%">+ Agregar reunión</button>
+    </div>
+    <div id="reunionesList" style="max-height:250px;overflow-y:auto"></div>
+    <div class="mactions">
+      <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="closeReuniones()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -553,8 +593,8 @@ document.getElementById('waterDrop').addEventListener('click', function(){
 <script>
 // ===================== STATE =====================
 const DEFAULTS = ['JACK','DINO','MIGUEL','GODOY',''];
-const COLORS   = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6'];
-const COLORS_L = ['#EFF6FF','#ECFDF5','#FFFBEB','#FEF2F2','#F5F3FF'];
+const COLORS   = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316'];
+const COLORS_L = ['#EFF6FF','#ECFDF5','#FFFBEB','#FEF2F2','#F5F3FF','#FDF2F8','#F0FDFA','#FFF7ED'];
 
 // ===================== VEHICULOS =====================
 const VEHICULOS = [
@@ -573,6 +613,8 @@ let curDate     = new Date();
 let selDate     = null;
 let view        = 'month';
 let serverReady = false;
+let reuniones   = {};
+let notas       = '';
 
 function firebaseToArray(val, size) {
   if (val === null || val === undefined) return Array.from({length: size}, () => null);
@@ -603,17 +645,20 @@ async function loadSharedState(){
     const snap = await db.ref('calendario').once('value');
     const state = snap.val();
     if(state){
-      conductores = firebaseToArray(state.conductores, 5).map(v => (v || '').toString());
+      conductores = (state.conductores || DEFAULTS).map(v => (v || '').toString());
+      notas = state.notas || '';
+      reuniones = state.reuniones || {};
       const rawData = state.data && typeof state.data === 'object' ? state.data : {};
       data = {};
       for (const key in rawData) {
         const day = rawData[key];
         if (day && day.drivers) {
-          const driversArr = firebaseToArray(day.drivers, 5).map(d => {
+          const nCond = conductores.length;
+          const driversArr = firebaseToArray(day.drivers, nCond).map(d => {
             if (!d) return {entries: []};
-            return { entries: fixEntries(d.entries) };
+            return { entries: fixEntries(d.entries), noLaborable: !!d.noLaborable };
           });
-          data[key] = { drivers: driversArr };
+          data[key] = { drivers: driversArr, noLaborable: !!day.noLaborable };
         }
       }
     }
@@ -621,6 +666,8 @@ async function loadSharedState(){
   }catch(err){
     conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
     data = JSON.parse(localStorage.getItem('sched5') || '{}');
+    notas = localStorage.getItem('notas5') || '';
+    try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
     showToast('Trabajando sin servidor: guardado solo en esta PC');
   }
 }
@@ -633,6 +680,7 @@ async function persistState(){
         const day = data[key];
         if(day && day.drivers){
           cleanData[key] = {
+            noLaborable: !!day.noLaborable,
             drivers: day.drivers.map(d => {
               if(!d) return {entries:[]};
               return {entries: fixEntries(d.entries).map(e => ({
@@ -648,13 +696,15 @@ async function persistState(){
           };
         }
       }
-      await db.ref('calendario').set({conductores, data: cleanData});
+      await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones});
     }catch(err){
       showToast('No se pudo guardar en la nube');
     }
   }
   localStorage.setItem('cond5',JSON.stringify(conductores));
   localStorage.setItem('sched5',JSON.stringify(data));
+  localStorage.setItem('notas5',notas);
+  localStorage.setItem('reuniones5',JSON.stringify(reuniones));
 }
 
 // ===================== UTILS =====================
@@ -666,20 +716,22 @@ const fmtFull = d => d.toLocaleDateString('es-PE',{weekday:'long',year:'numeric'
 const fmtShort = d => d.toLocaleDateString('es-PE',{weekday:'short',day:'numeric',month:'short'});
 const dName = i => conductores[i] || `Conductor ${i+1}`;
 
-function emptyDrivers(){return Array.from({length:5},()=>({entries:[]}))}
+function emptyDrivers(){return Array.from({length:conductores.length},()=>({entries:[]}))}
 function getDayData(key){
   if(!data[key]) data[key]={drivers:[]};
   var dr=data[key].drivers;
+  var nCond=conductores.length;
   if(!Array.isArray(dr)){
     var fixed=[];
     if(dr&&typeof dr==='object'){
-      for(var i=0;i<5;i++){fixed.push(dr[i]||null);}
+      for(var i=0;i<nCond;i++){fixed.push(dr[i]||null);}
     }
     data[key].drivers=fixed;
     dr=fixed;
   }
+  while(dr.length<nCond) dr.push(null);
   var clean=[];
-  for(var i=0;i<5;i++){
+  for(var i=0;i<nCond;i++){
     var d=i<dr.length?dr[i]:null;
     if(!d||typeof d!=='object') d={entries:[]};
     if(!Array.isArray(d.entries)) d.entries=fixEntries(d.entries);
@@ -718,6 +770,7 @@ function renderMonth(){
     if(isT(dt)) cls+=' today';
     if(sameD(dt,selDate)) cls+=' selected';
     if(!other && hasDayData(key)) cls+=' has-data';
+    if(!other && data[key] && data[key].noLaborable) cls+=' no-laborable';
     cell.className=cls;
 
     const num=document.createElement('div');
@@ -726,7 +779,7 @@ function renderMonth(){
 
     if(!other && hasDayData(key)){
       const dots=document.createElement('div'); dots.className='dots';
-      for(let i=0;i<5;i++){
+      for(let i=0;i<conductores.length;i++){
         const d=data[key].drivers[i];
         if(d&&d.entries&&d.entries.length>0){
           const dot=document.createElement('div');
@@ -750,6 +803,40 @@ function renderMonth(){
   for(let d=1;d<=dim;d++) g.appendChild(makeCell(new Date(y,m,d),false));
   const rem=42-(first+dim);
   for(let i=1;i<=rem;i++) g.appendChild(makeCell(new Date(y,m+1,i),true));
+
+  renderReunionesPanel();
+  var na=document.getElementById('notasArea');
+  if(na) na.value=notas;
+}
+
+function renderReunionesPanel(){
+  var el=document.getElementById('reunionesPanel');
+  if(!el) return;
+  var upcoming=getUpcomingReuniones();
+  if(upcoming.length===0){el.innerHTML='';return;}
+  var today=dk(new Date());
+  var html='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">📋 Próximas reuniones</div>';
+  upcoming.forEach(function([id,r]){
+    var isToday=r.fecha===today;
+    var isTomorrow=(function(){var t=new Date();t.setDate(t.getDate()+1);return r.fecha===dk(t)})();
+    var bg=isToday?'background:#fef3c7;border-color:#f59e0b':isTomorrow?'background:#dbeafe;border-color:#3b82f6':'background:var(--surface);border-color:var(--border)';
+    var label=isToday?'HOY':isTomorrow?'MAÑANA':r.fecha.slice(5).replace('-','/');
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid;border-radius:6px;margin-bottom:4px;'+bg+'">'+
+      '<span style="font-size:10px;font-weight:700;min-width:50px;color:'+(isToday?'#b45309':isTomorrow?'#1d4ed8':'var(--muted)')+'">'+label+'</span>'+
+      '<div style="flex:1;min-width:0"><span style="font-size:12px;font-weight:600">'+r.titulo+'</span>'+
+      (r.hora?' <span style="font-size:10px;color:var(--muted)">· '+r.hora+'</span>':'')+'</div></div>';
+  });
+  el.innerHTML=html;
+}
+
+var notasTimer=null;
+function saveNotas(){
+  if(notasTimer) clearTimeout(notasTimer);
+  notasTimer=setTimeout(async function(){
+    var na=document.getElementById('notasArea');
+    if(na) notas=na.value;
+    await persistState();
+  },2000);
 }
 
 // ===================== RENDER WEEK =====================
@@ -768,15 +855,16 @@ function renderWeek(){
   let hrow='<thead><tr><th style="width:64px;background:var(--navy2)">Conductor</th>';
   days.forEach((d,i)=>{
     const today=isT(d), sel=sameD(d,selDate);
-    const bg=today?'background:var(--amber);color:var(--navy)':sel?'background:var(--navy3)':'';
-    hrow+=`<th style="${bg};cursor:pointer" onclick="selectDay('${dk(d)}')">${DAY_NAMES[i]}<br><span style="font-size:14px;font-weight:800">${d.getDate()}</span></th>`;
+    const isNL=data[key]&&data[key].noLaborable;
+    const bg=today?'background:var(--amber);color:var(--navy)':isNL?'background:#6b7280;color:#fff':sel?'background:var(--navy3)':'';
+    hrow+=`<th style="${bg};cursor:pointer" onclick="selectDay('${dk(d)}')">${DAY_NAMES[i]}<br><span style="font-size:14px;font-weight:800">${d.getDate()}</span>${isNL?'<br><span style="font-size:9px">🚫</span>':''}</th>`;
   });
   hrow+='</tr></thead>';
   tbl.innerHTML=hrow;
 
   // Rows per conductor
   let tbody='<tbody>';
-  for(let ci=0;ci<5;ci++){
+  for(let ci=0;ci<conductores.length;ci++){
     const nm=dName(ci)||`C${ci+1}`;
     tbody+=`<tr>`;
     tbody+=`<td class="driver-label" style="background:${COLORS[ci]}22;color:${COLORS[ci]};border-left:3px solid ${COLORS[ci]}">${nm}</td>`;
@@ -804,6 +892,29 @@ function renderWeek(){
   }
   tbody+='</tbody>';
   tbl.innerHTML+=tbody;
+
+  // Reuniones row
+  var rrow='<tr><td class="driver-label" style="background:var(--navy);color:#fff;border-left:3px solid var(--amber)">📋 Reuniones</td>';
+  days.forEach(function(d){
+    var key=dk(d);
+    var dayReuniones=Object.entries(reuniones).filter(function([id,r]){return r.fecha===key});
+    var today=isT(d);
+    rrow+='<td style="'+(today?'background:#fffbeb;':'')+'vertical-align:top">';
+    if(dayReuniones.length===0){
+      rrow+='<div class="w-empty">—</div>';
+    } else {
+      dayReuniones.forEach(function([id,r]){
+        rrow+='<div class="w-entry" style="background:var(--amber);color:var(--navy)">';
+        if(r.hora) rrow+='<strong>🕐 '+r.hora+'</strong>';
+        rrow+='<span>📋 '+r.titulo+'</span>';
+        if(r.desc) rrow+='<br><span>'+r.desc+'</span>';
+        rrow+='</div>';
+      });
+    }
+    rrow+='</td>';
+  });
+  rrow+='</tr>';
+  tbl.innerHTML+=rrow;
 }
 
 // ===================== SELECT DAY =====================
@@ -815,7 +926,10 @@ function selectDay(dt){
   const dayData = getDayData(key);
 
   document.getElementById('detailHeader').innerHTML =
-    '<div style="display:flex;align-items:center;gap:6px"><button class="mobile-back" onclick="closeDetailMobile()">Volver</button><div><h3>'+fmtFull(dt)+'</h3><p>Edita las comisiones de cada conductor</p></div></div>';
+    '<div style="display:flex;align-items:center;gap:6px"><button class="mobile-back" onclick="closeDetailMobile()">Volver</button><div style="flex:1"><h3>'+fmtFull(dt)+'</h3><p>Edita las comisiones de cada conductor</p></div>'+
+    '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap" title="Marcar como día no laborable">'+
+    '<input type="checkbox" id="noLaborableChk" '+(data[key]&&data[key].noLaborable?'checked':'')+' onchange="toggleNoLaborable()" style="accent-color:#f59e0b">'+
+    '🚫 No laborable</label></div>';
   document.getElementById('detailFooter').style.display='flex';
 
   const totalEnt  = dayData.drivers.reduce(function(s,d){return s+((d&&d.entries)?d.entries.length:0)},0);
@@ -830,7 +944,7 @@ function selectDay(dt){
     '<div class="scard"><span class="sv" style="color:var(--c2)">'+totalEnt+'</span><div class="sl">Salidas</div></div>'+
   '</div>';
 
-  for(var ci=0;ci<5;ci++){
+  for(var ci=0;ci<conductores.length;ci++){
     var d=dayData.drivers[ci]||{entries:[]};
     var entries=Array.isArray(d.entries)?d.entries:[];
     var cnt=entries.length;
@@ -863,6 +977,15 @@ function selectDay(dt){
 
 function closeDetailMobile(){
   document.getElementById('detailPanel').classList.remove('open');
+}
+
+async function toggleNoLaborable(){
+  if(!selDate) return;
+  const key=dk(selDate);
+  if(!data[key]) data[key]={drivers:emptyDrivers()};
+  data[key].noLaborable=!!document.getElementById('noLaborableChk').checked;
+  await saveSilent();
+  selectDay(selDate);
 }
 
 function entryHTML(ci,ei,e){
@@ -950,7 +1073,7 @@ function readFromDOM(){
   if(!selDate) return;
   const key=dk(selDate);
   const dayData=getDayData(key);
-  for(let ci=0;ci<5;ci++){
+  for(let ci=0;ci<conductores.length;ci++){
     const d=dayData.drivers[ci];
     d.entries.forEach((e,ei)=>{
       e.horaSalida  =document.getElementById(`e${ci}_${ei}_hora`)?.value||'';
@@ -995,7 +1118,7 @@ function validarConflictos(dayData){
   const errores=[];
   
   // 1. Verificar cruces de horario por conductor
-  for(let ci=0;ci<5;ci++){
+  for(let ci=0;ci<conductores.length;ci++){
     const entries=dayData.drivers[ci].entries.filter(e=>e.horaSalida);
     for(let i=0;i<entries.length;i++){
       const a=entries[i];
@@ -1017,7 +1140,7 @@ function validarConflictos(dayData){
 
   // 2. Verificar placa repetida en mismo horario
   const placaMap={};
-  for(let ci=0;ci<5;ci++){
+  for(let ci=0;ci<conductores.length;ci++){
     dayData.drivers[ci].entries.forEach((e,ei)=>{
       if(!e.placa||!e.horaSalida) return;
       const key=e.placa;
@@ -1054,7 +1177,7 @@ async function saveDay(){
   const key=dk(selDate);
   const dayData=getDayData(key);
   // validate all entries have detalles
-  for(let ci=0;ci<5;ci++){
+  for(let ci=0;ci<conductores.length;ci++){
     for(let ei=0;ei<dayData.drivers[ci].entries.length;ei++){
       const e=dayData.drivers[ci].entries[ei];
       if(!e.obs||!e.obs.trim()){
@@ -1101,15 +1224,35 @@ async function updateName(ci,val){
 function openModal(){
   const f=document.getElementById('modalFields');
   f.innerHTML=conductores.map((n,i)=>`
-    <div class="mfield">
-      <label><span style="width:10px;height:10px;border-radius:50%;background:${COLORS[i]};display:inline-block"></span> Conductor ${i+1}</label>
-      <input id="mc${i}" value="${n}" placeholder="${i<4?DEFAULTS[i]:'Sin nombre (editable)'}">
-    </div>`).join('');
+    <div class="mfield" style="display:flex;align-items:center;gap:6px">
+      <div style="width:10px;height:10px;border-radius:50%;background:${COLORS[i%COLORS.length]};flex-shrink:0"></div>
+      <div style="flex:1">
+        <label style="font-size:10px;color:var(--muted);margin-bottom:2px">Conductor ${i+1}</label>
+        <input id="mc${i}" value="${n}" placeholder="Nombre del conductor" style="width:100%">
+      </div>
+      ${conductores.length>1?'<button class="btn btn-danger btn-sm" onclick="removeConductor('+i+')" style="flex-shrink:0;padding:3px 7px">✕</button>':''}
+    </div>`).join('')+
+    '<button class="btn btn-ghost btn-sm" onclick="addConductor()" style="margin-top:6px;width:100%;border:1.5px dashed var(--border)">+ Agregar conductor</button>';
   document.getElementById('condOverlay').classList.add('open');
+}
+function addConductor(){
+  if(conductores.length>=8){showToast('Máximo 8 conductores');return;}
+  conductores.push('');
+  openModal();
+}
+function removeConductor(i){
+  if(conductores.length<=1) return;
+  conductores.splice(i,1);
+  openModal();
 }
 function closeModal(){document.getElementById('condOverlay').classList.remove('open')}
 async function saveConductores(){
-  conductores=Array.from({length:5},(_,i)=>document.getElementById('mc'+i).value||'');
+  const inputs=[];
+  for(let i=0;i<conductores.length;i++){
+    const el=document.getElementById('mc'+i);
+    inputs.push(el?el.value.trim():'');
+  }
+  conductores=inputs;
   try{
     await persistState();
   }catch(err){
@@ -1171,7 +1314,7 @@ function renderConductores(){
   if(!data[key]){ document.getElementById('condWrap').innerHTML='<div class="empty"><p>Sin datos para este día</p></div>'; return; }
   const dayData=getDayData(key);
   let html='';
-  for(let ci=0;ci<5;ci++){
+  for(let ci=0;ci<conductores.length;ci++){
     const d=dayData.drivers[ci];
     const nm=dName(ci)||'C'+(ci+1);
     html+=`<div class="kanban-col">
@@ -1211,6 +1354,62 @@ const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).j
   showToast('📥 Exportado como CSV');
 }
 
+// ===================== REUNIONES =====================
+function openReuniones(){
+  document.getElementById('rFecha').value=dk(new Date());
+  document.getElementById('rHora').value='';
+  document.getElementById('rTitulo').value='';
+  document.getElementById('rDesc').value='';
+  renderReunionesList();
+  document.getElementById('reunionesOverlay').classList.add('open');
+}
+function closeReuniones(){document.getElementById('reunionesOverlay').classList.remove('open')}
+async function addReunion(){
+  const fecha=document.getElementById('rFecha').value;
+  const hora=document.getElementById('rHora').value.trim();
+  const titulo=document.getElementById('rTitulo').value.trim();
+  const desc=document.getElementById('rDesc').value.trim();
+  if(!fecha||!titulo){showToast('⚠️ Fecha y título son obligatorios');return;}
+  const id='r_'+Date.now();
+  reuniones[id]={fecha,hora,titulo,desc};
+  await persistState();
+  renderReunionesList();
+  document.getElementById('rTitulo').value='';
+  document.getElementById('rDesc').value='';
+  showToast('✅ Reunión agregada');
+}
+async function removeReunion(id){
+  if(!confirm('¿Eliminar esta reunión?')) return;
+  delete reuniones[id];
+  await persistState();
+  renderReunionesList();
+  showToast('🗑️ Reunión eliminada');
+}
+function renderReunionesList(){
+  const list=Object.entries(reuniones).sort((a,b)=>a[1].fecha.localeCompare(b[1].fecha));
+  const el=document.getElementById('reunionesList');
+  if(list.length===0){el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px">Sin reuniones programadas</div>';return;}
+  el.innerHTML=list.map(([id,r])=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg)">
+      <div style="min-width:50px;text-align:center">
+        <div style="font-size:11px;font-weight:700;color:var(--c1)">${r.fecha.slice(5).replace('-','/')}</div>
+        ${r.hora?'<div style="font-size:10px;color:var(--muted)">'+r.hora+'</div>':''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700">${r.titulo}</div>
+        ${r.desc?'<div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+r.desc+'</div>':''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="removeReunion('${id}')" style="padding:2px 6px;font-size:10px">✕</button>
+    </div>`).join('');
+}
+function getUpcomingReuniones(){
+  const today=dk(new Date());
+  return Object.entries(reuniones)
+    .filter(([id,r])=>r.fecha>=today)
+    .sort((a,b)=>a[1].fecha.localeCompare(b[1].fecha))
+    .slice(0,5);
+}
+
 // ===================== TOAST =====================
 function showToast(msg){
   const t=document.getElementById('toast');
@@ -1224,6 +1423,8 @@ async function initApp(){
   await loadSharedState();
   updateLegend();
   renderMonth();
+  var na=document.getElementById('notasArea');
+  if(na) na.value=notas;
 }
 initApp();
 
@@ -1264,39 +1465,6 @@ function logout(){
   document.getElementById('loginContainer').classList.remove('visible');
 }
 
-// ===== COMISIÓN AUTO-APPEND =====
-document.getElementById('day-panel').addEventListener('input', function(e) {
-  if (!e.target.matches('input[list="comisionSugerencias"]')) return;
-  const val = e.target.value;
-  if (!val || val.endsWith(', ')) return;
-  const prev = e.target.dataset.lastVal || '';
-  e.target.dataset.lastVal = val;
-  // detect datalist selection: value jumped by >2 chars
-  if (val.length - prev.length <= 2) return;
-  const opts = document.getElementById('comisionSugerencias').options;
-  for (let opt of opts) {
-    if (opt.value === val) {
-      e.target.value = val + ', ';
-      break;
-    }
-  }
-});
-
-// ===== TEMA CLARO / OSCURO =====
-function toggleTheme(){
-  const isDark = document.body.classList.toggle('dark');
-  const btn = document.getElementById('themeBtn');
-  btn.textContent = isDark ? '☀️ Claro' : '🌙 Oscuro';
-  localStorage.setItem('calTheme', isDark ? 'dark' : 'light');
-}
-function applyTheme(){
-  const saved = localStorage.getItem('calTheme');
-  if(saved === 'dark'){
-    document.body.classList.add('dark');
-    const btn = document.getElementById('themeBtn');
-    if(btn) btn.textContent = '☀️ Claro';
-  }
-}
 </script>
 </body>
 </html>
