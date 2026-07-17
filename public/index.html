@@ -445,6 +445,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
       <div class="dn">Mié</div><div class="dn">Jue</div><div class="dn">Vie</div><div class="dn">Sáb</div>
     </div>
     <div class="days-grid" id="daysGrid"></div>
+    <div class="legend" id="legend"></div>
     <div id="reunionesPanel" style="margin-top:10px"></div>
     <div id="notasPanel" style="margin-top:10px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -469,9 +470,6 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     </div>
     <div class="kanban-wrap" id="condWrap"></div>
   </div>
-
-  <!-- LEGEND -->
-  <div class="legend" id="legend"></div>
 
 </div>
 
@@ -636,7 +634,7 @@ let selDate     = null;
 let view        = 'month';
 let serverReady = false;
 let reuniones   = {};
-let notas       = '';
+let notas       = [];
 
 function firebaseToArray(val, size) {
   if (val === null || val === undefined) return Array.from({length: size}, () => null);
@@ -1016,6 +1014,7 @@ function renderWeek(){
 // ===================== SELECT DAY =====================
 function selectDay(dt){
   try{
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
   if(typeof dt === 'string') dt = new Date(dt + 'T12:00:00');
   selDate = dt;
   const key = dk(dt);
@@ -1094,6 +1093,7 @@ function closeDetailMobile(){
 
 async function toggleNoLaborable(){
   if(!selDate) return;
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
   const key=dk(selDate);
   if(!data[key]) data[key]={drivers:emptyDrivers()};
   data[key].noLaborable=!!document.getElementById('noLaborableChk').checked;
@@ -1172,10 +1172,11 @@ async function addEntry(ci){
 async function removeEntry(ci,ei){
   if(!selDate) return;
   if(!confirm('¿Eliminar esta comisión?')) return;
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
   const key=dk(selDate);
   const dayData=getDayData(key);
   dayData.drivers[ci].entries.splice(ei,1);
-  await saveSilent();
+  await persistState();
   selectDay(selDate);
 }
 
@@ -1236,6 +1237,14 @@ document.addEventListener('input',function(e){
 });
 document.addEventListener('change',function(e){
   if(e.target.closest&&e.target.closest('.detail-body')) scheduleAutoSave();
+});
+window.addEventListener('beforeunload',function(){
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
+  if(selDate) readFromDOM();
+  localStorage.setItem('cond5',JSON.stringify(conductores));
+  localStorage.setItem('sched5',JSON.stringify(data));
+  localStorage.setItem('notas6',JSON.stringify(notas));
+  localStorage.setItem('reuniones5',JSON.stringify(reuniones));
 });
 
 // ===================== VALIDACIONES =====================
@@ -1352,34 +1361,39 @@ async function updateName(ci,val){
   try{ await persistState(); }catch(err){ showToast('No se pudo guardar en red'); }
   updateLegend();
 }
-function openModal(){
+var tempConductores=[];
+function rebuildCondModal(){
   const f=document.getElementById('modalFields');
-  f.innerHTML=conductores.map((n,i)=>`
+  f.innerHTML=tempConductores.map((n,i)=>`
     <div class="mfield" style="display:flex;align-items:center;gap:6px">
       <div style="width:10px;height:10px;border-radius:50%;background:${COLORS[i%COLORS.length]};flex-shrink:0"></div>
       <div style="flex:1">
         <label style="font-size:10px;color:var(--muted);margin-bottom:2px">Conductor ${i+1}</label>
         <input id="mc${i}" value="${n}" placeholder="Nombre del conductor" style="width:100%">
       </div>
-      ${conductores.length>1?'<button class="btn btn-danger btn-sm" onclick="removeConductor('+i+')" style="flex-shrink:0;padding:3px 7px">✕</button>':''}
+      ${tempConductores.length>1?'<button class="btn btn-danger btn-sm" onclick="removeConductor('+i+')" style="flex-shrink:0;padding:3px 7px">✕</button>':''}
     </div>`).join('')+
     '<button class="btn btn-ghost btn-sm" onclick="addConductor()" style="margin-top:6px;width:100%;border:1.5px dashed var(--border)">+ Agregar conductor</button>';
+}
+function openModal(){
+  tempConductores=conductores.slice();
+  rebuildCondModal();
   document.getElementById('condOverlay').classList.add('open');
 }
 function addConductor(){
-  if(conductores.length>=8){showToast('Máximo 8 conductores');return;}
-  conductores.push('');
-  openModal();
+  if(tempConductores.length>=8){showToast('Máximo 8 conductores');return;}
+  tempConductores.push('');
+  rebuildCondModal();
 }
 function removeConductor(i){
-  if(conductores.length<=1) return;
-  conductores.splice(i,1);
-  openModal();
+  if(tempConductores.length<=1) return;
+  tempConductores.splice(i,1);
+  rebuildCondModal();
 }
 function closeModal(){document.getElementById('condOverlay').classList.remove('open')}
 async function saveConductores(){
   const inputs=[];
-  for(let i=0;i<conductores.length;i++){
+  for(let i=0;i<tempConductores.length;i++){
     const el=document.getElementById('mc'+i);
     inputs.push(el?el.value.trim():'');
   }
