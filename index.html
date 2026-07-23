@@ -720,6 +720,7 @@ let curDate     = new Date();
 let selDate     = null;
 let view        = 'month';
 let serverReady = false;
+let dataIsStale = true;
 let reuniones   = {};
 let notas       = [];
 
@@ -791,6 +792,7 @@ async function loadSharedState(){
       try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
     }
     serverReady = true;
+    dataIsStale = false;
   }catch(err){
     try{
       var resp=await fetch('/api/state');
@@ -818,6 +820,7 @@ async function loadSharedState(){
         localStorage.setItem('notas6',JSON.stringify(notas));
         localStorage.setItem('reuniones5',JSON.stringify(reuniones));
         showToast('Datos cargados desde servidor de respaldo');
+        dataIsStale=false;
       }else{
         conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
         data = JSON.parse(localStorage.getItem('sched5') || '{}');
@@ -847,7 +850,7 @@ async function persistState(){
   localStorage.setItem('reuniones5',JSON.stringify(reuniones));
   localStorage.setItem('sched5_ts',String(Date.now()));
   var remoteSaved=false;
-  if(serverReady){
+  if(serverReady && !dataIsStale){
     showSaving();
     try{
       const cleanData = {};
@@ -885,6 +888,8 @@ async function persistState(){
       pendingFirebaseSave=true;
       scheduleFirebaseRetry();
     }
+  }else if(dataIsStale){
+    pendingFirebaseSave=null;
   }else{
     pendingFirebaseSave=true;
     scheduleFirebaseRetry();
@@ -963,9 +968,14 @@ function setConnStatus(s){
   var banner=document.getElementById('offlineBanner');
   if(!dot||!txt) return;
   if(s==='connected'){
-    dot.style.background='#10b981';txt.textContent='Conectado a Firebase';
-    retry.style.display='none';
-    if(banner) banner.style.display='none';
+    if(dataIsStale){
+      dot.style.background='#f59e0b';txt.textContent='Conectado — datos desactualizados';
+      retry.style.display='none';
+    }else{
+      dot.style.background='#10b981';txt.textContent='Conectado a Firebase';
+      retry.style.display='none';
+      if(banner) banner.style.display='none';
+    }
     retryCount=0;
   }else if(s==='saving'){
     dot.style.background='#f59e0b';txt.textContent='Guardando...';
@@ -1001,6 +1011,50 @@ function initConnMonitor(){
       if(!serverReady){
         serverReady=true;
         if(pendingFirebaseSave) persistState();
+      }
+      if(dataIsStale){
+        db.ref('calendario').once('value').then(function(snap){
+          var state=snap.val();
+          if(state){
+            conductores=(state.conductores||DEFAULTS).map(function(v){return(v||'').toString();});
+            var rawNotas=state.notas||[];
+            if(typeof rawNotas==='string')notas=rawNotas?[{id:'n_0',text:rawNotas,color:'yellow'}]:[];
+            else if(Array.isArray(rawNotas))notas=rawNotas;
+            else notas=[];
+            reuniones=state.reuniones||{};
+            var rawData=state.data&&typeof state.data==='object'?state.data:{};
+            var nlDays=state.nlDays||{};
+            data={};
+            for(var key in rawData){
+              var day=rawData[key];
+              if(day&&day.drivers){
+                var nCond=conductores.length;
+                var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
+                  if(!d)return{entries:[]};
+                  return{entries:fixEntries(d.entries)};
+                });
+                var isNL=!!day.noLaborable;
+                var nlDescVal=day.nlDesc||'';
+                if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
+                data[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
+              }
+            }
+            for(var k in nlDays){
+              if(!data[k]&&nlDays[k].nl){
+                data[k]={drivers:Array.from({length:conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||''};
+              }
+            }
+            localStorage.setItem('cond5',JSON.stringify(conductores));
+            localStorage.setItem('sched5',JSON.stringify(data));
+            localStorage.setItem('notas6',JSON.stringify(notas));
+            localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+            dataIsStale=false;
+            setConnStatus('connected');
+            renderMonth();
+            if(view==='week')renderWeek();
+            showToast('✅ Datos actualizados desde Firebase');
+          }
+        }).catch(function(){});
       }
     }
     else setConnStatus('offline');
@@ -1854,7 +1908,8 @@ async function saveDay(){
     return;
   }
   if(!saved){
-    showToast('⚠️ Guardado local. Firebase no disponible. Se reintentará automáticamente.');
+    if(dataIsStale) showToast('⚠️ Guardado local. Datos desactualizados - se sincronizarán cuando Firebase responda.');
+    else showToast('⚠️ Guardado local. Firebase no disponible. Se reintentará automáticamente.');
     renderMonth();
     if(view==='week') renderWeek();
     return;
