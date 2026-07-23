@@ -2190,6 +2190,51 @@ async function initApp(){
   updateLegend();
   renderMonth();
   initConnMonitor();
+  setInterval(function(){
+    if(!dataIsStale) return;
+    if(!window.firebase||!firebase.database) return;
+    db.ref('calendario').once('value').then(function(snap){
+      var state=snap.val();
+      if(!state) return;
+      conductores=(state.conductores||DEFAULTS).map(function(v){return(v||'').toString();});
+      var rawNotas=state.notas||[];
+      if(typeof rawNotas==='string')notas=rawNotas?[{id:'n_0',text:rawNotas,color:'yellow'}]:[];
+      else if(Array.isArray(rawNotas))notas=rawNotas;
+      else notas=[];
+      reuniones=state.reuniones||{};
+      var rawData=state.data&&typeof state.data==='object'?state.data:{};
+      var nlDays=state.nlDays||{};
+      data={};
+      for(var key in rawData){
+        var day=rawData[key];
+        if(day&&day.drivers){
+          var nCond=conductores.length;
+          var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
+            if(!d)return{entries:[]};
+            return{entries:fixEntries(d.entries)};
+          });
+          var isNL=!!day.noLaborable;
+          var nlDescVal=day.nlDesc||'';
+          if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
+          data[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
+        }
+      }
+      for(var k in nlDays){
+        if(!data[k]&&nlDays[k].nl){
+          data[k]={drivers:Array.from({length:conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||''};
+        }
+      }
+      localStorage.setItem('cond5',JSON.stringify(conductores));
+      localStorage.setItem('sched5',JSON.stringify(data));
+      localStorage.setItem('notas6',JSON.stringify(notas));
+      localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+      dataIsStale=false;
+      setConnStatus('connected');
+      renderMonth();
+      if(view==='week')renderWeek();
+      showToast('✅ Datos actualizados desde Firebase');
+    }).catch(function(){});
+  },30000);
 }
 initApp();
 
