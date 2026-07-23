@@ -68,7 +68,9 @@ async function syncBundledData() {
 function normalizeState(parsed) {
   return {
     conductores: Array.isArray(parsed.conductores) ? parsed.conductores : DEFAULT_STATE.conductores,
-    data: parsed.data && typeof parsed.data === 'object' ? parsed.data : {}
+    data: parsed.data && typeof parsed.data === 'object' ? parsed.data : {},
+    notas: Array.isArray(parsed.notas) ? parsed.notas : [],
+    reuniones: parsed.reuniones && typeof parsed.reuniones === 'object' ? parsed.reuniones : {}
   };
 }
 
@@ -88,7 +90,9 @@ function saveState(state) {
     await ensureDb();
     const next = {
       conductores: Array.isArray(state.conductores) ? state.conductores : DEFAULT_STATE.conductores,
-      data: state.data && typeof state.data === 'object' ? state.data : {}
+      data: state.data && typeof state.data === 'object' ? state.data : {},
+      notas: Array.isArray(state.notas) ? state.notas : [],
+      reuniones: state.reuniones && typeof state.reuniones === 'object' ? state.reuniones : {}
     };
     const tmp = `${DB_FILE}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(next, null, 2), 'utf8');

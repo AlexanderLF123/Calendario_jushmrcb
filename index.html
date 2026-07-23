@@ -795,13 +795,45 @@ async function loadSharedState(){
     }
     serverReady = true;
   }catch(err){
-    conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
-    data = JSON.parse(localStorage.getItem('sched5') || '{}');
-    var oldNotas = localStorage.getItem('notas5');
-    if(oldNotas) notas = [{id:'n_0',text:oldNotas,color:'yellow'}];
-    else notas = JSON.parse(localStorage.getItem('notas6') || '[]');
-    try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
-    showToast('Trabajando sin servidor: guardado solo en esta PC');
+    try{
+      var resp=await fetch('/api/state');
+      var serverState=await resp.json();
+      if(serverState&&serverState.data){
+        conductores=(serverState.conductores||DEFAULTS).map(function(v){return(v||'').toString();});
+        data={};var sData=serverState.data||{};
+        for(var k in sData){
+          var day=sData[k];
+          if(day&&day.drivers){
+            var nCond=conductores.length;
+            var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
+              if(!d)return{entries:[]};
+              return{entries:fixEntries(d.entries)};
+            });
+            var isNL=!!day.noLaborable;
+            var nlDescVal=day.nlDesc||'';
+            data[k]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
+          }
+        }
+        notas=serverState.notas||[];
+        reuniones=serverState.reuniones||{};
+        showToast('Datos cargados desde servidor de respaldo');
+      }else{
+        conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
+        data = JSON.parse(localStorage.getItem('sched5') || '{}');
+        notas = JSON.parse(localStorage.getItem('notas6') || '[]');
+        try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
+        showToast('Trabajando offline: guardado solo en esta PC');
+      }
+      serverReady=true;
+    }catch(e2){
+      conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
+      data = JSON.parse(localStorage.getItem('sched5') || '{}');
+      var oldNotas = localStorage.getItem('notas5');
+      if(oldNotas) notas = [{id:'n_0',text:oldNotas,color:'yellow'}];
+      else notas = JSON.parse(localStorage.getItem('notas6') || '[]');
+      try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
+      showToast('Trabajando sin servidor: guardado solo en esta PC');
+    }
   }
 }
 
@@ -855,6 +887,24 @@ async function persistState(){
     scheduleFirebaseRetry();
     if(connStatus!=='offline'&&connStatus!=='error') setConnStatus('offline');
   }
+  try{
+    var serverPayload={conductores:conductores,data:{},notas:notas,reuniones:reuniones};
+    for(var sk in data){
+      var day=data[sk];
+      if(day&&day.drivers){
+        serverPayload.data[sk]={
+          noLaborable:!!day.noLaborable,nlDesc:day.nlDesc||'',
+          drivers:day.drivers.map(function(d){
+            if(!d)return{entries:[]};
+            return{entries:fixEntries(d.entries).map(function(e){
+              return{horaSalida:e.horaSalida||'',inspecciones:e.inspecciones||'',comision:e.comision||'',retorno:e.retorno||'',personal:e.personal||'',obs:e.obs||'',placa:e.placa||''};
+            })};
+          })
+        };
+      }
+    }
+    fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serverPayload)}).catch(function(){});
+  }catch(e){}
   localStorage.setItem('cond5',JSON.stringify(conductores));
   localStorage.setItem('sched5',JSON.stringify(data));
   localStorage.setItem('notas6',JSON.stringify(notas));
@@ -1769,16 +1819,19 @@ async function saveDay(){
   readFromDOM();
   const key=dk(selDate);
   const dayData=getDayData(key);
-  // validate all entries have detalles
+  var faltaObs=[];
   for(let ci=0;ci<conductores.length;ci++){
     for(let ei=0;ei<dayData.drivers[ci].entries.length;ei++){
       const e=dayData.drivers[ci].entries[ei];
+      if(!e.horaSalida) continue;
       if(!e.obs||!e.obs.trim()){
-        alert('⚠️ Todas las comisiones deben tener "Detalles de la Inspección"');
-        selectDay(selDate);
-        return;
+        faltaObs.push((conductores[ci]||'Conductor '+(ci+1))+' - Comisión #'+(ei+1));
       }
     }
+  }
+  if(faltaObs.length>0){
+    alert('⚠️ Los siguientes registros necesitan "Detalles de la Inspección":\n\n• '+faltaObs.join('\n• ')+'\n\nPor favor complétalos antes de guardar.');
+    return;
   }
   const errores=validarConflictos(dayData);
   if(errores.length>0){
