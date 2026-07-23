@@ -748,29 +748,17 @@ function fixEntries(entries) {
 }
 
 async function loadSharedState(){
-  var localTs=parseInt(localStorage.getItem('sched5_ts')||'0');
   try{
     const snap = await db.ref('calendario').once('value');
     const state = snap.val();
     if(state){
-      var remoteData=state.data||{};
-      var remoteNotas=state.notas||[];
-      var localData=JSON.parse(localStorage.getItem('sched5')||'{}');
-      var localNotas=JSON.parse(localStorage.getItem('notas6')||'[]');
-      var useRemote=true;
-      if(Object.keys(localData).length>Object.keys(remoteData).length){useRemote=false;}
-      else if(Array.isArray(localNotas)&&localNotas.length>0&&Array.isArray(remoteNotas)&&remoteNotas.length===0){useRemote=false;}
       conductores = (state.conductores || DEFAULTS).map(v => (v || '').toString());
-      if(useRemote){
-        var rawNotas = state.notas || [];
-        if(typeof rawNotas === 'string') notas = rawNotas ? [{id:'n_0',text:rawNotas,color:'yellow'}] : [];
-        else if(Array.isArray(rawNotas)) notas = rawNotas;
-        else notas = [];
-      }else{
-        notas=localNotas.length>0?localNotas:((state.notas||[]));
-      }
+      var rawNotas = state.notas || [];
+      if(typeof rawNotas === 'string') notas = rawNotas ? [{id:'n_0',text:rawNotas,color:'yellow'}] : [];
+      else if(Array.isArray(rawNotas)) notas = rawNotas;
+      else notas = [];
       reuniones = state.reuniones || {};
-      const rawData = useRemote?(state.data && typeof state.data === 'object' ? state.data : {}):localData;
+      const rawData = state.data && typeof state.data === 'object' ? state.data : {};
       const nlDays = state.nlDays || {};
       data = {};
       for (const key in rawData) {
@@ -792,6 +780,15 @@ async function loadSharedState(){
           data[key]={drivers:Array.from({length:conductores.length},()=>({entries:[]})),noLaborable:true,nlDesc:nlDays[key].desc||''};
         }
       }
+      localStorage.setItem('cond5',JSON.stringify(conductores));
+      localStorage.setItem('sched5',JSON.stringify(data));
+      localStorage.setItem('notas6',JSON.stringify(notas));
+      localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+    }else{
+      conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
+      data = JSON.parse(localStorage.getItem('sched5') || '{}');
+      notas = JSON.parse(localStorage.getItem('notas6') || '[]');
+      try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
     }
     serverReady = true;
   }catch(err){
@@ -816,6 +813,10 @@ async function loadSharedState(){
         }
         notas=serverState.notas||[];
         reuniones=serverState.reuniones||{};
+        localStorage.setItem('cond5',JSON.stringify(conductores));
+        localStorage.setItem('sched5',JSON.stringify(data));
+        localStorage.setItem('notas6',JSON.stringify(notas));
+        localStorage.setItem('reuniones5',JSON.stringify(reuniones));
         showToast('Datos cargados desde servidor de respaldo');
       }else{
         conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
