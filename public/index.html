@@ -1823,14 +1823,13 @@ async function saveDay(){
   for(let ci=0;ci<conductores.length;ci++){
     for(let ei=0;ei<dayData.drivers[ci].entries.length;ei++){
       const e=dayData.drivers[ci].entries[ei];
-      if(!e.horaSalida) continue;
       if(!e.obs||!e.obs.trim()){
         faltaObs.push((conductores[ci]||'Conductor '+(ci+1))+' - Comisión #'+(ei+1));
       }
     }
   }
   if(faltaObs.length>0){
-    alert('⚠️ Los siguientes registros necesitan "Detalles de la Inspección":\n\n• '+faltaObs.join('\n• ')+'\n\nPor favor complétalos antes de guardar.');
+    alert('⚠️ Todas las comisiones deben tener "Detalles de la Inspección":\n\n• '+faltaObs.join('\n• ')+'\n\nPor favor complétalos antes de guardar.');
     return;
   }
   const errores=validarConflictos(dayData);
