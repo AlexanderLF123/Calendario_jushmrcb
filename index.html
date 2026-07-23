@@ -722,6 +722,7 @@ let view        = 'month';
 let serverReady = false;
 let reuniones   = {};
 let notas       = [];
+let confirmedKeys = {};  // keys confirmed saved to Firebase/server
 
 function firebaseToArray(val, size) {
   if (val === null || val === undefined) return Array.from({length: size}, () => null);
@@ -784,11 +785,15 @@ async function loadSharedState(){
       localStorage.setItem('sched5',JSON.stringify(data));
       localStorage.setItem('notas6',JSON.stringify(notas));
       localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+      confirmedKeys={};
+      for(var ck in data) confirmedKeys[ck]=true;
     }else{
       conductores = JSON.parse(localStorage.getItem('cond5') || JSON.stringify(DEFAULTS));
       data = JSON.parse(localStorage.getItem('sched5') || '{}');
       notas = JSON.parse(localStorage.getItem('notas6') || '[]');
       try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
+      confirmedKeys={};
+      for(var ck in data) confirmedKeys[ck]=true;
     }
     serverReady = true;
   }catch(err){
@@ -846,6 +851,7 @@ async function persistState(){
   localStorage.setItem('notas6',JSON.stringify(notas));
   localStorage.setItem('reuniones5',JSON.stringify(reuniones));
   localStorage.setItem('sched5_ts',String(Date.now()));
+  var remoteSaved=false;
   if(serverReady){
     showSaving();
     try{
@@ -876,6 +882,7 @@ async function persistState(){
       await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones});
       await db.ref('calendario/nlDays').set(nlBackup);
       pendingFirebaseSave=null;
+      remoteSaved=true;
       showSaved();
     }catch(err){
       showError();
@@ -904,12 +911,17 @@ async function persistState(){
         };
       }
     }
-    fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serverPayload)}).catch(function(){});
+    var serverResp=await fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serverPayload)});
+    if(serverResp.ok) remoteSaved=true;
   }catch(e){}
+  if(remoteSaved){
+    for(var k in data) confirmedKeys[k]=true;
+  }
   localStorage.setItem('cond5',JSON.stringify(conductores));
   localStorage.setItem('sched5',JSON.stringify(data));
   localStorage.setItem('notas6',JSON.stringify(notas));
   localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+  return remoteSaved;
 }
 function scheduleFirebaseRetry(){
   if(firebaseRetryTimer) clearTimeout(firebaseRetryTimer);
@@ -1033,6 +1045,7 @@ function getDayData(key){
 }
 function hasDayData(key){
   if(!data[key]) return false;
+  if(!confirmedKeys[key]) return false;
   return data[key].drivers.some(d=>d.entries&&d.entries.length>0);
 }
 function countInsp(key){
@@ -1458,7 +1471,7 @@ function renderWeek(){
     days.forEach(d=>{
       const key=dk(d);
       const isNL=data[key]&&data[key].noLaborable;
-      const drData=data[key]&&data[key].drivers&&data[key].drivers[ci];
+      const drData=data[key]&&confirmedKeys[key]&&data[key].drivers&&data[key].drivers[ci];
       const entries=drData&&drData.entries?drData.entries:[];
       const today=isT(d);
       if(isNL){
@@ -1839,9 +1852,15 @@ async function saveDay(){
     if(!confirm(msg)) return;
   }
   try{
-    await persistState();
+    var saved=await persistState();
   }catch(err){
     showToast('No se pudo guardar en red');
+    return;
+  }
+  if(!saved){
+    showToast('⚠️ No se guardó en servidor. Los datos podrían no persistir.');
+    renderMonth();
+    if(view==='week') renderWeek();
     return;
   }
   alert('✅ Horario guardado correctamente');
