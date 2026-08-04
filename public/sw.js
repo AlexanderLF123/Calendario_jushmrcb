@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inspecciones-v1';
+const CACHE_NAME = 'inspecciones-v2';
 const ASSETS = ['/', '/index.html'];
 
 self.addEventListener('install', e => {
