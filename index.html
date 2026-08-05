@@ -2158,6 +2158,13 @@ const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).j
 }
 
 // ===================== REUNIONES =====================
+function fmtReunionFecha(fechaStr){
+  try{
+    var d=new Date(fechaStr+'T12:00:00');
+    var s=d.toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long'});
+    return s.charAt(0).toUpperCase()+s.slice(1);
+  }catch(e){ return fechaStr||''; }
+}
 function renderReunionesPanel(){
   var el=document.getElementById('reunionesPanel');
   if(!el) return;
@@ -2171,11 +2178,10 @@ function renderReunionesPanel(){
       var isToday=r.fecha===today;
       var isTomorrow=(function(){var t=new Date();t.setDate(t.getDate()+1);return r.fecha===dk(t)})();
       var bg=isToday?'background:#fef3c7;border-color:#f59e0b':isTomorrow?'background:#dbeafe;border-color:#3b82f6':'background:var(--surface);border-color:var(--border)';
-      var label=isToday?'HOY':isTomorrow?'MAÑANA':r.fecha.slice(5).replace('-','/');
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid;border-radius:6px;margin-bottom:4px;'+bg+'">'+
-        '<span style="font-size:10px;font-weight:700;min-width:50px;color:'+(isToday?'#b45309':isTomorrow?'#1d4ed8':'var(--muted)')+'">'+label+'</span>'+
-        '<div style="flex:1;min-width:0"><span style="font-size:12px;font-weight:600">'+r.titulo+'</span>'+
-        (r.hora?' <span style="font-size:10px;color:var(--muted)">· '+r.hora+'</span>':'')+'</div></div>';
+      var label=isToday?'Hoy':isTomorrow?'Mañana':fmtReunionFecha(r.fecha);
+      html+='<div style="padding:6px 8px;border:1px solid;border-radius:6px;margin-bottom:4px;'+bg+'">'+
+        '<div style="font-size:10px;font-weight:700;color:'+(isToday?'#b45309':isTomorrow?'#1d4ed8':'var(--muted)')+';text-transform:capitalize">'+label+'</div>'+
+        '<div style="font-size:12px;font-weight:600">'+r.titulo+'</div></div>';
     });
   }
   el.innerHTML=html;
