@@ -1128,6 +1128,12 @@ function initConnMonitor(){
 }
 
 // ===================== UTILS =====================
+function fmtInspecciones(v){
+  if(v==='Reunión') return '📅 Reunión';
+  if(v) return '🔢 '+v+' insp.';
+  return '';
+}
+
 const dk  = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 const p2  = n => String(n).padStart(2,'0');
 const isT = d => dk(d) === dk(new Date());
@@ -1605,7 +1611,7 @@ function renderWeek(){
           if(e.horaSalida) tbody+=`<strong>⏰ ${e.horaSalida}</strong>`;
           if(e.personal)   tbody+=`<span>👥 ${e.personal}</span><br>`;
           if(e.comision)   tbody+=`<span>📍 ${e.comision}</span><br>`;
-          if(e.inspecciones) tbody+=`<span>🔢 ${e.inspecciones} insp.</span>`;
+          if(e.inspecciones) tbody+=`<span>${fmtInspecciones(e.inspecciones)}</span>`;
           tbody+=`</div>`;
         });
       }
@@ -1765,6 +1771,7 @@ function entryHTML(ci,ei,e){
         <select id="e${ci}_${ei}_insp">
           <option value="">--</option>
           ${[1,2,3,4,5].map(n=>`<option value="${n}" ${e.inspecciones==n?'selected':''}>${n}</option>`).join('')}
+          <option value="Reunión" ${e.inspecciones==='Reunión'?'selected':''}>📅 Reunión</option>
         </select></div>
       <div class="fg"><label>🕐 Retorno</label>
         <input type="text" list="retornoSugerencias" id="e${ci}_${ei}_ret" value="${e.retorno||''}" placeholder="Ej: 16:30 o TODO EL DÍA"></div>
@@ -2123,7 +2130,7 @@ function renderConductores(){
       html+=`<div class="kanban-card" onclick="selectDay('${key}')">
         <div class="kc-time">${e.horaSalida||'--:--'} ${e.retorno?'→ '+e.retorno:''}</div>
         <div class="kc-detail">${e.comision||''}${e.comision&&e.personal?' · ':''}${e.personal||''}</div>
-        ${e.inspecciones?`<div class="kc-detail">🔢 ${e.inspecciones} insp. ${e.placa?'· 🚗 '+e.placa:''}</div>`:''}
+        ${e.inspecciones?`<div class="kc-detail">${fmtInspecciones(e.inspecciones)} ${e.placa?'· 🚗 '+e.placa:''}</div>`:''}
       </div>`;
     });
     if(d.entries.length===0) html+=`<div style="padding:10px;text-align:center;color:var(--muted);font-size:10px">—</div>`;
