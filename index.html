@@ -2181,7 +2181,7 @@ function renderReunionesPanel(){
       var label=isToday?'Hoy':isTomorrow?'Mañana':fmtReunionFecha(r.fecha);
       html+='<div style="padding:6px 8px;border:1px solid;border-radius:6px;margin-bottom:4px;'+bg+'">'+
         '<div style="font-size:10px;font-weight:700;color:'+(isToday?'#b45309':isTomorrow?'#1d4ed8':'var(--muted)')+';text-transform:capitalize">'+label+'</div>'+
-        '<div style="font-size:12px;font-weight:600">'+r.titulo+'</div></div>';
+        '<div style="font-size:12px;font-weight:600">'+r.titulo+(r.hora?' <span style="font-size:10px;color:var(--muted);font-weight:400">· '+r.hora+'</span>':'')+'</div></div>';
     });
   }
   el.innerHTML=html;
