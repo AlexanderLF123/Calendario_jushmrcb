@@ -156,6 +156,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .fg textarea{line-height:1.4;box-sizing:border-box}
 .fg input:focus,.fg select:focus{border-color:var(--navy)}
 .entry-row2{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
+.per-wrap{border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;padding:4px;cursor:text}
+.per-wrap:focus-within{border-color:var(--navy)}
+.per-chips{display:flex;flex-wrap:wrap;gap:4px}
+.per-chip{display:inline-flex;align-items:center;gap:4px;background:var(--navy);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;line-height:1.5;white-space:nowrap}
+.per-chip b{cursor:pointer;opacity:.75;font-weight:700;padding:0 1px}
+.per-chip b:hover{opacity:1}
+.per-wrap input{border:none;outline:none;background:transparent;flex:1;min-width:90px;padding:2px 4px;font-size:12px;font-family:inherit;color:#111}
+body.dark .per-wrap{background:#334155;border-color:#475569}
+body.dark .per-wrap input{color:#e2e8f0}
+.per-tag-sm{display:inline-block;background:rgba(15,23,42,.12);color:#111827;border-radius:8px;padding:0 5px;font-size:10px;margin:1px 2px 1px 0;white-space:nowrap}
+body.dark .per-tag-sm{background:rgba(148,163,184,.25);color:#e2e8f0}
 .entry-actions{display:flex;gap:4px;margin-top:6px;justify-content:flex-end}
 .add-entry-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px;border:1.5px dashed var(--border);border-radius:var(--radius-sm);cursor:pointer;color:var(--muted);font-size:12px;font-weight:600;transition:all .15s;margin:0 12px 10px}
 .add-entry-btn:hover{border-color:var(--navy);color:var(--navy);background:#eff6ff}
@@ -1645,7 +1656,7 @@ function renderWeek(){
         entries.forEach(e=>{
           tbody+=`<div class="w-entry" style="background:${COLORS[ci]}">`;
           if(e.horaSalida) tbody+=`<strong>⏰ ${e.horaSalida}</strong>`;
-          if(e.personal)   tbody+=`<span>👥 ${e.personal}</span><br>`;
+          if(e.personal)   tbody+=`<span>👥 ${fmtPersonal(e.personal)}</span><br>`;
           if(e.comision)   tbody+=`<span>📍 ${e.comision}</span><br>`;
           if(e.inspecciones) tbody+=`<span>${fmtInspecciones(e.inspecciones)}</span>`;
           tbody+=`</div>`;
@@ -1754,6 +1765,7 @@ function selectDay(dt){
   }
 
   document.getElementById('detailBody').innerHTML=html;
+  initPerChips();
   renderMonth();
   if(view==='week') renderWeek();
   if(window.innerWidth<=900) document.getElementById('detailPanel').classList.add('open');
@@ -1816,7 +1828,12 @@ function entryHTML(ci,ei,e){
       <div class="fg"><label>📍 Comisión / Distrito</label>
         <input type="text" list="comisionSugerencias" id="e${ci}_${ei}_com" value="${e.comision||''}" placeholder="C.U. (elige varias)"></div>
       <div class="fg"><label>👥 Personal a cargo</label>
-        <input type="text" list="personalSugerencias" id="e${ci}_${ei}_per" value="${e.personal||''}" placeholder="Selecciona o escribe"></div>
+        <div class="per-wrap" id="perw${ci}_${ei}" onclick="document.getElementById('perin${ci}_${ei}').focus()">
+          <div class="per-chips" id="perchips${ci}_${ei}"></div>
+          <input type="text" list="personalSugerencias" id="perin${ci}_${ei}" placeholder="Elige o escribe y Enter" oninput="perTyping(${ci},${ei})" onkeydown="perKey(${event},${ci},${ei})" onchange="perPick(${ci},${ei})">
+        </div>
+        <input type="hidden" id="e${ci}_${ei}_per" value="${(e.personal||'').replace(/"/g,'&quot;')}">
+      </div>
     </div>
     <div class="entry-row2">
       <div class="fg"><label>🚗 Unidad vehicular</label>
@@ -1832,6 +1849,74 @@ function entryHTML(ci,ei,e){
       <button class="btn btn-danger btn-sm" onclick="removeEntry(${ci},${ei})">✕ Eliminar</button>
     </div>
   </div>`;
+}
+function perHidden(ci,ei){ return document.getElementById('e'+ci+'_'+ei+'_per'); }
+function perList(ci,ei){
+  const h=perHidden(ci,ei);
+  if(!h) return [];
+  return (h.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+}
+function perRender(ci,ei){
+  const chips=document.getElementById('perchips'+ci+'_'+ei);
+  if(!chips) return;
+  const list=perList(ci,ei);
+  chips.innerHTML=list.map((v,i)=>
+    '<span class="per-chip">'+v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+
+    '<b title="Quitar" onclick="perRemove('+ci+','+ei+','+i+')">×</b></span>'
+  ).join('');
+}
+function perWrite(ci,ei,list){
+  const h=perHidden(ci,ei);
+  if(h) h.value=list.join(', ');
+  perRender(ci,ei);
+}
+function perAdd(ci,ei,v){
+  v=(v||'').trim();
+  if(!v) return;
+  const list=perList(ci,ei);
+  if(list.indexOf(v)<0) list.push(v);
+  perWrite(ci,ei,list);
+}
+function perRemove(ci,ei,i){
+  const list=perList(ci,ei);
+  if(i<0||i>=list.length) return;
+  list.splice(i,1);
+  perWrite(ci,ei,list);
+}
+function perKey(ev,ci,ei){
+  if(ev.key==='Enter'||ev.key===','){
+    ev.preventDefault();
+    const inp=document.getElementById('perin'+ci+'_'+ei);
+    if(inp&&inp.value.trim()){ perAdd(ci,ei,inp.value); inp.value=''; }
+  }
+}
+function perPick(ci,ei){
+  const inp=document.getElementById('perin'+ci+'_'+ei);
+  if(!inp) return;
+  const v=inp.value.trim();
+  if(!v) return;
+  perAdd(ci,ei,v); inp.value='';
+}
+function perTyping(ci,ei){
+  const inp=document.getElementById('perin'+ci+'_'+ei);
+  if(!inp) return;
+  const v=inp.value.trim();
+  if(!v) return;
+  const dl=document.getElementById('personalSugerencias');
+  if(dl && dl.options && Array.from(dl.options).some(o=>o.value.toUpperCase()===v.toUpperCase())){
+    perAdd(ci,ei,v); inp.value='';
+  }
+}
+function initPerChips(){
+  document.querySelectorAll('.per-wrap').forEach(function(w){
+    const m=w.id.match(/^perw(\d+)_(\d+)$/);
+    if(m) perRender(parseInt(m[1],10),parseInt(m[2],10));
+  });
+}
+function fmtPersonal(v){
+  if(!v) return '';
+  return v.split(',').map(s=>s.trim()).filter(Boolean)
+    .map(s=>'<span class="per-tag-sm">'+s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>').join('');
 }
 
 async function addEntry(ci){
@@ -2165,7 +2250,7 @@ function renderConductores(){
     d.entries.forEach((e,ei)=>{
       html+=`<div class="kanban-card" onclick="selectDay('${key}')">
         <div class="kc-time">${e.horaSalida||'--:--'} ${e.retorno?'→ '+e.retorno:''}</div>
-        <div class="kc-detail">${e.comision||''}${e.comision&&e.personal?' · ':''}${e.personal||''}</div>
+        <div class="kc-detail">${e.comision||''}${e.comision&&e.personal?' · ':''}${fmtPersonal(e.personal)||''}</div>
         ${e.inspecciones?`<div class="kc-detail">${fmtInspecciones(e.inspecciones)} ${e.placa?'· 🚗 '+e.placa:''}</div>`:''}
       </div>`;
     });
