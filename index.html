@@ -848,6 +848,7 @@ async function loadSharedState(){
 var pendingFirebaseSave=null;
 var firebaseRetryTimer=null;
 var editedDays={};
+var lastLocalWriteTs=0;
 function markDayEdited(key){ editedDays[key]=true; }
 function showDiag(msg){
   var p=document.getElementById('diagPanel');
@@ -897,9 +898,11 @@ async function persistState(){
           if(day.noLaborable) nlBackup[key]={nl:true,desc:day.nlDesc||''};
         }
       }
-      await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones});
+      await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones, _updatedAt: Date.now()});
       await db.ref('calendario/nlDays').set(nlBackup);
+      lastLocalWriteTs=Date.now();
       pendingFirebaseSave=null;
+      editedDays={};
       remoteSaved=true;
       showSaved();
     }catch(err){
@@ -950,8 +953,10 @@ async function persistState(){
         localStorage.setItem('notas6',JSON.stringify(notas));
         localStorage.setItem('reuniones5',JSON.stringify(reuniones));
         try{
-          await db.ref('calendario').set({conductores, data: remoteData, notas, reuniones});
+          const writeTs=Date.now();
+          await db.ref('calendario').set({conductores, data: remoteData, notas, reuniones, _updatedAt: writeTs});
           await db.ref('calendario/nlDays').set(mergedNlDays);
+          lastLocalWriteTs=writeTs;
           pendingFirebaseSave=null;
           remoteSaved=true;
           showSaved();
@@ -1074,57 +1079,31 @@ function initConnMonitor(){
         db.ref('calendario').once('value').then(function(snap){
           var state=snap.val();
           if(state){
-            conductores=(state.conductores||DEFAULTS).map(function(v){return(v||'').toString();});
-            var rawNotas=state.notas||[];
-            if(typeof rawNotas==='string')notas=rawNotas?[{id:'n_0',text:rawNotas,color:'yellow'}]:[];
-            else if(Array.isArray(rawNotas))notas=rawNotas;
-            else notas=[];
-            reuniones=state.reuniones||{};
-            var rawData=state.data&&typeof state.data==='object'?state.data:{};
-            var nlDays=state.nlDays||{};
-            var remoteData={};
-            for(var key in rawData){
-              var day=rawData[key];
-              if(day&&day.drivers){
-                var nCond=conductores.length;
-                var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
-                  if(!d)return{entries:[]};
-                  return{entries:fixEntries(d.entries)};
-                });
-                var isNL=!!day.noLaborable;
-                var nlDescVal=day.nlDesc||'';
-                if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
-                remoteData[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
-              }
-            }
-            for(var k in nlDays){
-              if(!remoteData[k]&&nlDays[k].nl){
-                remoteData[k]={drivers:Array.from({length:conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||''};
-              }
-            }
-            var pendingKeys=Object.keys(editedDays);
-            var merged=remoteData;
-            for(var i=0;i<pendingKeys.length;i++){
-              var pk=pendingKeys[i];
-              if(data[pk]) merged[pk]=data[pk];
-            }
-            data=merged;
-            localStorage.setItem('cond5',JSON.stringify(conductores));
-            localStorage.setItem('sched5',JSON.stringify(data));
-            localStorage.setItem('notas6',JSON.stringify(notas));
-            localStorage.setItem('reuniones5',JSON.stringify(reuniones));
-            dataIsStale=false;
-            setConnStatus('connected');
-            renderMonth();
-            if(view==='week')renderWeek();
-            if(pendingKeys.length>0) showToast('✅ Firebase recuperado. Se preservaron tus ' + pendingKeys.length + ' cambios locales.');
-            else showToast('✅ Datos actualizados desde Firebase');
+            var parsed=parseFirebaseState(state);
+            if(parsed) applyRemoteState(parsed,'✅ Firebase recuperado. Datos sincronizados.');
           }
         }).catch(function(){});
       }
     }
     else setConnStatus('offline');
   });
+}
+function initRealtimeSync(){
+  if(!window.firebase||!firebase.database) return;
+  var firstSnapshot=true;
+  db.ref('calendario').on('value',function(snap){
+    if(!serverReady) return;
+    var state=snap.val();
+    if(!state||!state.data) return;
+    if(lastLocalWriteTs>0 && state._updatedAt && state._updatedAt<=lastLocalWriteTs) return;
+    var parsed=parseFirebaseState(state);
+    if(!parsed) return;
+    if(firstSnapshot){firstSnapshot=false; return;}
+    var nEdit=Object.keys(editedDays).length;
+    applyRemoteState(parsed, nEdit>0
+      ? '🔄 Sincronizado con otra PC. Tus cambios pendientes ('+nEdit+') se conservan.'
+      : '🔄 Datos actualizados desde otra PC');
+  },function(err){});
 }
 
 // ===================== UTILS =====================
@@ -1143,6 +1122,63 @@ const fmtShort = d => d.toLocaleDateString('es-PE',{weekday:'short',day:'numeric
 const dName = i => conductores[i] || `Conductor ${i+1}`;
 
 function emptyDrivers(){return Array.from({length:conductores.length},()=>({entries:[]}))}
+function parseFirebaseState(state){
+  if(!state) return null;
+  var out={};
+  out.conductores=(state.conductores||DEFAULTS).map(function(v){return(v||'').toString();});
+  var rawNotas=state.notas||[];
+  if(typeof rawNotas==='string')out.notas=rawNotas?[{id:'n_0',text:rawNotas,color:'yellow'}]:[];
+  else if(Array.isArray(rawNotas))out.notas=rawNotas;
+  else out.notas=[];
+  out.reuniones=state.reuniones||{};
+  var rawData=state.data&&typeof state.data==='object'?state.data:{};
+  var nlDays=state.nlDays||{};
+  var ndata={};
+  for(var key in rawData){
+    var day=rawData[key];
+    if(day&&day.drivers){
+      var nCond=out.conductores.length;
+      var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
+        if(!d)return{entries:[]};
+        return{entries:fixEntries(d.entries)};
+      });
+      var isNL=!!day.noLaborable;
+      var nlDescVal=day.nlDesc||'';
+      if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
+      ndata[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
+    }
+  }
+  for(var k in nlDays){
+    if(!ndata[k]&&nlDays[k].nl){
+      ndata[k]={drivers:Array.from({length:out.conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||''};
+    }
+  }
+  out.data=ndata;
+  out.updatedAt=state._updatedAt||0;
+  return out;
+}
+function applyRemoteState(parsed,msg){
+  if(!parsed) return;
+  var pendingKeys=Object.keys(editedDays);
+  var merged={};
+  for(var key in parsed.data) merged[key]=parsed.data[key];
+  for(var i=0;i<pendingKeys.length;i++){
+    var pk=pendingKeys[i];
+    if(data[pk]) merged[pk]=data[pk];
+  }
+  conductores=parsed.conductores;
+  notas=parsed.notas;
+  reuniones=parsed.reuniones;
+  data=merged;
+  dataIsStale=false;
+  localStorage.setItem('cond5',JSON.stringify(conductores));
+  localStorage.setItem('sched5',JSON.stringify(data));
+  localStorage.setItem('notas6',JSON.stringify(notas));
+  localStorage.setItem('reuniones5',JSON.stringify(reuniones));
+  renderMonth();
+  if(view==='week') renderWeek();
+  showToast(msg||'🔄 Datos actualizados desde otra PC');
+}
 function getDayData(key){
   if(!data[key]) data[key]={drivers:[]};
   var dr=data[key].drivers;
@@ -2277,57 +2313,16 @@ async function initApp(){
   updateLegend();
   renderMonth();
   initConnMonitor();
+  initRealtimeSync();
   setInterval(function(){
     if(!dataIsStale) return;
     if(!window.firebase||!firebase.database) return;
     db.ref('calendario').once('value').then(function(snap){
       var state=snap.val();
       if(!state) return;
-      conductores=(state.conductores||DEFAULTS).map(function(v){return(v||'').toString();});
-      var rawNotas=state.notas||[];
-      if(typeof rawNotas==='string')notas=rawNotas?[{id:'n_0',text:rawNotas,color:'yellow'}]:[];
-      else if(Array.isArray(rawNotas))notas=rawNotas;
-      else notas=[];
-      reuniones=state.reuniones||{};
-      var rawData=state.data&&typeof state.data==='object'?state.data:{};
-      var nlDays=state.nlDays||{};
-      var remoteData={};
-      for(var key in rawData){
-        var day=rawData[key];
-        if(day&&day.drivers){
-          var nCond=conductores.length;
-          var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
-            if(!d)return{entries:[]};
-            return{entries:fixEntries(d.entries)};
-          });
-          var isNL=!!day.noLaborable;
-          var nlDescVal=day.nlDesc||'';
-          if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
-          remoteData[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
-        }
-      }
-      for(var k in nlDays){
-        if(!remoteData[k]&&nlDays[k].nl){
-          remoteData[k]={drivers:Array.from({length:conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||''};
-        }
-      }
-      var pendingKeys=Object.keys(editedDays);
-      var merged=remoteData;
-      for(var i=0;i<pendingKeys.length;i++){
-        var pk=pendingKeys[i];
-        if(data[pk]) merged[pk]=data[pk];
-      }
-      data=merged;
-      localStorage.setItem('cond5',JSON.stringify(conductores));
-      localStorage.setItem('sched5',JSON.stringify(data));
-      localStorage.setItem('notas6',JSON.stringify(notas));
-      localStorage.setItem('reuniones5',JSON.stringify(reuniones));
-      dataIsStale=false;
-      setConnStatus('connected');
-      renderMonth();
-      if(view==='week')renderWeek();
-      if(pendingKeys.length>0) showToast('✅ Firebase recuperado. Se preservaron tus ' + pendingKeys.length + ' cambios locales.');
-      else showToast('✅ Datos actualizados desde Firebase');
+      var parsed=parseFirebaseState(state);
+      if(!parsed) return;
+      applyRemoteState(parsed,'✅ Firebase recuperado. Datos sincronizados.');
     }).catch(function(){});
   },30000);
 }
