@@ -760,6 +760,57 @@ function fixEntries(entries) {
   return [];
 }
 
+function hashStr(s){
+  var h=5381; for(var i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;}
+  return (h<0?-h:h).toString(36);
+}
+function entryHasContent(e){
+  return e&&(e.horaSalida||e.inspecciones||e.comision||e.retorno||e.personal||e.obs||e.placa);
+}
+// Da un ID único y estable a la tarjeta. Para tarjetas con contenido el ID se deriva del
+// contenido (mismo ID en todas las PCs); para tarjetas vacías el ID es aleatorio.
+// Si dos tarjetas del mismo conductor tendrían el mismo ID (contenido idéntico), se
+// desambigua con sufijo determinístico según el orden dentro del conductor.
+function ensureEntryId(e,ci,arr){
+  if(!e) return '';
+  if(e.id) return e.id;
+  var seed=[ci,e.placa||'',e.horaSalida||'',e.comision||'',e.retorno||'',e.inspecciones||'',e.obs||''].join('|');
+  var bare=seed.substring(seed.indexOf('|')+1);
+  var base=bare?('e'+hashStr(seed)):('e'+Date.now().toString(36)+Math.random().toString(36).slice(2,9));
+  var id=base;
+  if(arr){
+    var taken={};
+    arr.forEach(function(o){ if(o&&o.id) taken[o.id]=true; });
+    var n=2;
+    while(taken[id]){ id=base+'_'+(n++); }
+  }
+  e.id=id;
+  return id;
+}
+// Un día es "legado" si aún tiene alguna tarjeta sin id en memoria. En ese caso
+// hay que migrarlo escribiendo el día completo (writeDayToFirebase) para no duplicar
+// tarjetas al mezclar formato antiguo (array) con el nuevo (objeto por id).
+function isLegacyDay(day){
+  if(!day||!Array.isArray(day.drivers)) return false;
+  return day.drivers.some(function(d){
+    return d&&Array.isArray(d.entries)&&d.entries.some(function(e){return e&&!e.id;});
+  });
+}
+function rawDayHasLegacy(day){
+  if(!day||!day.drivers) return false;
+  var arr=Array.isArray(day.drivers)?day.drivers:Object.values(day.drivers);
+  return arr.some(function(d){
+    if(!d) return false;
+    var ents=Array.isArray(d.entries)?d.entries:(d.entries?Object.values(d.entries):[]);
+    return ents.some(function(e){ return !e||!e.id; });
+  });
+}
+function markLegacyFromLocalData(){
+  for(var k in data){
+    if(rawDayHasLegacy(data[k])) legacyDays[k]=true;
+  }
+}
+
 async function loadSharedState(){
   try{
     const snap = await db.ref('calendario').once('value');
@@ -777,16 +828,17 @@ async function loadSharedState(){
       data = {};
       for (const key in rawData) {
         const day = rawData[key];
-        if (day && day.drivers) {
+        if (day) {
           const nCond = conductores.length;
-          const driversArr = firebaseToArray(day.drivers, nCond).map(d => {
+          const driversArr = day.drivers ? firebaseToArray(day.drivers, nCond).map(d => {
             if (!d) return {entries: []};
             return { entries: fixEntries(d.entries) };
-          });
+          }) : Array.from({length: nCond}, () => ({entries: []}));
           var isNL = !!day.noLaborable;
           var nlDescVal = day.nlDesc || '';
           if(!isNL && nlDays[key] && nlDays[key].nl){ isNL=true; nlDescVal=nlDescVal||nlDays[key].desc||''; }
           data[key] = { drivers: driversArr, noLaborable: isNL, nlDesc: nlDescVal, updatedAt: day.updatedAt || 0 };
+          if(rawDayHasLegacy(day)) legacyDays[key]=true; else delete legacyDays[key];
         }
       }
       for(const key in nlDays){
@@ -804,6 +856,7 @@ async function loadSharedState(){
       notas = JSON.parse(localStorage.getItem('notas6') || '[]');
       try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
     }
+    markLegacyFromLocalData();
     serverReady = true;
     dataIsStale = false;
   }catch(err){
@@ -817,15 +870,16 @@ async function loadSharedState(){
         data={};var sData=serverState.data||{};
         for(var k in sData){
           var day=sData[k];
-          if(day&&day.drivers){
+          if(day){
             var nCond=conductores.length;
-            var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
+            var driversArr=day.drivers?firebaseToArray(day.drivers,nCond).map(function(d){
               if(!d)return{entries:[]};
               return{entries:fixEntries(d.entries)};
-            });
+            }):Array.from({length:nCond},function(){return{entries:[]};});
             var isNL=!!day.noLaborable;
             var nlDescVal=day.nlDesc||'';
             data[k]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal,updatedAt:day.updatedAt||0};
+            if(rawDayHasLegacy(day)) legacyDays[k]=true; else delete legacyDays[k];
           }
         }
         notas=serverState.notas||[];
@@ -842,6 +896,7 @@ async function loadSharedState(){
         notas = JSON.parse(localStorage.getItem('notas6') || '[]');
         try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
         showToast('Trabajando offline: guardado solo en esta PC');
+        markLegacyFromLocalData();
       }
       serverReady=true;
     }catch(e2){
@@ -852,6 +907,7 @@ async function loadSharedState(){
       else notas = JSON.parse(localStorage.getItem('notas6') || '[]');
       try{ reuniones = JSON.parse(localStorage.getItem('reuniones5') || '{}'); }catch(e){ reuniones={}; }
       showToast('Trabajando sin servidor: guardado solo en esta PC');
+      markLegacyFromLocalData();
     }
   }
 }
@@ -860,11 +916,41 @@ var pendingFirebaseSave=null;
 var firebaseRetryTimer=null;
 var editedDays={};
 var dirtyDays={};
+var dirtyCards={};
+var removedCards={};
+var legacyDays={};
 var lastLocalWriteTs=0;
 function markDayEdited(key){
   editedDays[key]=true;
   dirtyDays[key]=true;
   if(data[key]) data[key].updatedAt=Date.now();
+}
+function markEntryEdited(key,ci,ei){
+  var dayData=getDayData(key);
+  if(!dayData||!dayData.drivers||!dayData.drivers[ci]) return;
+  var e=dayData.drivers[ci].entries[ei];
+  if(!e) return;
+  var id=ensureEntryId(e,ci,dayData.drivers[ci].entries);
+  e.updatedAt=Date.now();
+  editedDays[key]=true;
+  dirtyDays[key]=true;
+  if(data[key]) data[key].updatedAt=e.updatedAt;
+  if(!dirtyCards[key]) dirtyCards[key]={};
+  dirtyCards[key][ci+':'+id]=true;
+  if(removedCards[key]&&removedCards[key].ids&&removedCards[key].ids[ci+':'+id]) delete removedCards[key].ids[ci+':'+id];
+}
+function markEntryRemoved(key,ci,ei){
+  var dayData=getDayData(key);
+  var e=dayData.drivers[ci]&&dayData.drivers[ci].entries[ei];
+  editedDays[key]=true;
+  dirtyDays[key]=true;
+  if(!removedCards[key]) removedCards[key]={ids:{},idxs:{}};
+  if(e&&e.id){
+    removedCards[key].ids[ci+':'+e.id]=true;
+    if(dirtyCards[key]) delete dirtyCards[key][ci+':'+e.id];
+  }else{
+    removedCards[key].idxs[ci+':'+ei]=true;
+  }
 }
 function showDiag(msg){
   var p=document.getElementById('diagPanel');
@@ -937,24 +1023,97 @@ function cleanDayForStorage(day){
     drivers: day.drivers.map(function(d){
       if(!d) return {entries:[]};
       return {entries: fixEntries(d.entries).map(function(e){
-        return {horaSalida:e.horaSalida||'',inspecciones:e.inspecciones||'',comision:e.comision||'',retorno:e.retorno||'',personal:e.personal||'',obs:e.obs||'',placa:e.placa||''};
+        var c={horaSalida:e.horaSalida||'',inspecciones:e.inspecciones||'',comision:e.comision||'',retorno:e.retorno||'',personal:e.personal||'',obs:e.obs||'',placa:e.placa||''};
+        if(e.id) c.id=e.id;
+        if(e.updatedAt) c.updatedAt=e.updatedAt;
+        return c;
       })};
     })
   };
 }
 
-function writeDayToFirebase(key, remove){
-  var ref=db.ref('calendario/data/'+key);
+function cleanEntryForStorage(e){
+  var now=Date.now();
+  return {
+    id:e.id||'',
+    updatedAt:e.updatedAt||now,
+    horaSalida:e.horaSalida||'',
+    inspecciones:e.inspecciones||'',
+    comision:e.comision||'',
+    retorno:e.retorno||'',
+    personal:e.personal||'',
+    obs:e.obs||'',
+    placa:e.placa||''
+  };
+}
+function findEntryByCid(key,ci,id){
+  var day=data[key];
+  if(!day||!Array.isArray(day.drivers)) return null;
+  var drv=day.drivers[ci];
+  if(!drv||!Array.isArray(drv.entries)) return null;
+  for(var i=0;i<drv.entries.length;i++){
+    var e=drv.entries[i];
+    if(e&&e.id===id) return e;
+  }
+  return null;
+}
+// Transacción por tarjeta: solo escribe ESTA tarjeta. Si en Firebase hay una versión
+// más nueva de la misma tarjeta (mismo id), aborta y conserva la del otro PC.
+function writeCardToFirebase(key,ci,id){
+  var ref=db.ref('calendario/data/'+key+'/drivers/'+ci+'/entries/'+id);
   return ref.transaction(function(current){
-    if(!remove && current && current.updatedAt && data[key] && data[key].updatedAt && current.updatedAt>data[key].updatedAt){
-      return;
-    }
-    if(remove) return null;
-    var clean=cleanDayForStorage(data[key]);
-    if(!clean.updatedAt) clean.updatedAt=Date.now();
+    var e=findEntryByCid(key,ci,id);
+    if(!e) return; // ya no existe localmente: no tocar lo que haya en Firebase
+    var clean=cleanEntryForStorage(e);
+    if(current && current.updatedAt && clean.updatedAt && current.updatedAt>clean.updatedAt) return; // remota más nueva
     return clean;
   });
 }
+// Eliminación por posición (solo para tarjetas legadas sin id)
+function removeEntryByIndex(key,ci,idx){
+  var ref=db.ref('calendario/data/'+key+'/drivers/'+ci+'/entries');
+  return ref.transaction(function(current){
+    var arr=Array.isArray(current)?current:(current&&typeof current==='object'?Object.values(current):[]);
+    if(idx<0||idx>=arr.length) return;
+    arr.splice(idx,1);
+    return arr;
+  });
+}
+
+function writeDayToFirebase(key, remove){
+  var ref=db.ref('calendario/data/'+key);
+  return ref.transaction(function(current){
+    if(remove) return null;
+    var clean=cleanDayForStorage(data[key]);
+    if(!clean.updatedAt) clean.updatedAt=Date.now();
+    // Guardar las tarjetas como objeto {id: tarjeta}. Asigna id a las que aún no lo
+    // tienen y fusiona con lo que ya haya en Firebase por tarjeta, para no pisar
+    // ediciones concurrentes de otro PC durante la migración.
+    clean.drivers=clean.drivers.map(function(d,ci){
+      var obj={},arr=fixEntries(d.entries);
+      var memEntries=data[key].drivers[ci]&&data[key].drivers[ci].entries;
+      var curDrv=current&&current.drivers&&current.drivers[ci];
+      var curEntries=curDrv?fixEntries(curDrv.entries):[];
+      var curById={};
+      curEntries.forEach(function(ce){ if(ce&&ce.id) curById[ce.id]=ce; });
+      arr.forEach(function(e,i){
+        var id=ensureEntryId(e,ci,arr);
+        // Reflejar el id en memoria para que ediciones posteriores usen el mismo id
+        if(memEntries&&memEntries[i]&&!memEntries[i].id) memEntries[i].id=id;
+        var re=curById[id];
+        if(re&&re.updatedAt&&(!e.updatedAt||re.updatedAt>e.updatedAt)){ obj[id]=re; }
+        else obj[id]=e;
+        delete curById[id];
+      });
+      // Tarjetas del remoto que no existen localmente: conservarlas
+      for(var ck in curById){ obj[ck]=curById[ck]; }
+      return {entries:obj};
+    });
+    return clean;
+  });
+}
+
+
 
 async function writeToFirebase(){
   try{
@@ -968,12 +1127,57 @@ async function writeToFirebase(){
     await db.ref('calendario').update(updates);
     var keys=Object.keys(dirtyDays);
     for(var i=0;i<keys.length;i++){
-      await writeDayToFirebase(keys[i], !data[keys[i]]);
+      var key=keys[i];
+      if(!data[key]){
+        await db.ref('calendario/data/'+key).set(null);
+        continue;
+      }
+      var day=data[key];
+      if(legacyDays[key]||isLegacyDay(day)){
+        // Migración de día legado: se escribe el día completo en formato por id
+        var migRes=await writeDayToFirebase(key, false);
+        // Solo si la transacción se confirmó se deja de considerar legado
+        if(!migRes||!migRes.committed) continue;
+        delete legacyDays[key];
+        continue;
+      }
+      await db.ref('calendario/data/'+key).update({
+        noLaborable: !!day.noLaborable,
+        nlDesc: day.nlDesc||'',
+        updatedAt: day.updatedAt||now
+      });
+      // Tarjetas eliminadas (por id y por posición para datos legados)
+      var rems=removedCards[key];
+      if(rems){
+        for(var rk in (rems.ids||{})){
+          var rp=rk.split(':');
+          await db.ref('calendario/data/'+key+'/drivers/'+rp[0]+'/entries/'+rp[1]).remove();
+        }
+        var idxByCi={};
+        for(var ix in (rems.idxs||{})){
+          var q=ix.split(':');
+          (idxByCi[q[0]]=idxByCi[q[0]]||[]).push(parseInt(q[1],10));
+        }
+        for(var cik in idxByCi){
+          idxByCi[cik].sort(function(a,b){return b-a;});
+          for(var z=0;z<idxByCi[cik].length;z++){
+            await removeEntryByIndex(key,parseInt(cik,10),idxByCi[cik][z]);
+          }
+        }
+      }
+      // Tarjetas editadas: una transacción por tarjeta
+      var cards=dirtyCards[key]||{};
+      for(var ck in cards){
+        var cp=ck.split(':');
+        await writeCardToFirebase(key,parseInt(cp[0],10),cp[1]);
+      }
     }
     lastLocalWriteTs=Date.now();
     pendingFirebaseSave=null;
     editedDays={};
     dirtyDays={};
+    dirtyCards={};
+    removedCards={};
     showSaved();
     return true;
   }catch(err){
@@ -1117,16 +1321,17 @@ function parseFirebaseState(state){
   var ndata={};
   for(var key in rawData){
     var day=rawData[key];
-    if(day&&day.drivers){
+    if(day){
       var nCond=out.conductores.length;
-      var driversArr=firebaseToArray(day.drivers,nCond).map(function(d){
+      var driversArr=day.drivers?firebaseToArray(day.drivers,nCond).map(function(d){
         if(!d)return{entries:[]};
         return{entries:fixEntries(d.entries)};
-      });
+      }):Array.from({length:nCond},function(){return{entries:[]};});
       var isNL=!!day.noLaborable;
       var nlDescVal=day.nlDesc||'';
       if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
       ndata[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal,updatedAt:day.updatedAt||0};
+      if(rawDayHasLegacy(day)) legacyDays[key]=true; else delete legacyDays[key];
     }
   }
   for(var k in nlDays){
@@ -1138,6 +1343,31 @@ function parseFirebaseState(state){
   out.updatedAt=state._updatedAt||0;
   return out;
 }
+// Merge de tarjetas por id: conserva el orden local y agrega al final las tarjetas
+// que solo existen en el remoto. Para el mismo id, gana la versión con updatedAt mayor.
+function mergeEntries(rArr,lArr){
+  var rmap={},lmap={};
+  rArr.forEach(function(e){ if(e&&e.id) rmap[e.id]=e; });
+  lArr.forEach(function(e){ if(e&&e.id) lmap[e.id]=e; });
+  var out=[],seen={};
+  lArr.forEach(function(le){
+    if(!le) return;
+    if(le.id){
+      var re=rmap[le.id];
+      if(re&&re.updatedAt&&(!le.updatedAt||re.updatedAt>le.updatedAt)) out.push(re);
+      else out.push(le);
+      seen[le.id]=true;
+    }else{
+      out.push(le);
+    }
+  });
+  rArr.forEach(function(re){
+    if(!re||!re.id||seen[re.id]) return;
+    out.push(re);
+    seen[re.id]=true;
+  });
+  return out;
+}
 function applyRemoteState(parsed,msg){
   if(!parsed) return;
   var merged={};
@@ -1146,8 +1376,25 @@ function applyRemoteState(parsed,msg){
     var ld=data[key];
     var rts=rd&&rd.updatedAt?rd.updatedAt:0;
     var lts=ld&&ld.updatedAt?ld.updatedAt:0;
-    if(!ld || rts>=lts) merged[key]=rd;
-    else merged[key]=ld;
+    if(!ld){ merged[key]=rd; continue; }
+    var metaRemote=rts>lts;
+    var drivers=[];
+    var ldDrivers=Array.isArray(ld.drivers)?ld.drivers:[];
+    var rdDrivers=Array.isArray(rd.drivers)?rd.drivers:[];
+    var n=Math.max(ldDrivers.length,rdDrivers.length,conductores.length);
+    for(var ci=0;ci<n;ci++){
+      var ldv=ldDrivers[ci]||{entries:[]};
+      var rdv=rdDrivers[ci]||{entries:[]};
+      var le=Array.isArray(ldv.entries)?ldv.entries:fixEntries(ldv.entries);
+      var re=Array.isArray(rdv.entries)?rdv.entries:fixEntries(rdv.entries);
+      drivers[ci]={entries:mergeEntries(re,le)};
+    }
+    merged[key]={
+      drivers:drivers,
+      noLaborable: metaRemote? (rd.noLaborable?rd.noLaborable:false) : (ld.noLaborable?ld.noLaborable:false),
+      nlDesc: metaRemote? (rd.nlDesc||'') : (ld.nlDesc||''),
+      updatedAt: Math.max(rts,lts)
+    };
   }
   for(var k in data){
     if(!merged[k]) merged[k]=data[k];
@@ -1844,6 +2091,7 @@ function perWrite(ci,ei,list){
   const h=perHidden(ci,ei);
   if(h) h.value=list.join(', ');
   perRender(ci,ei);
+  if(selDate) markEntryEdited(dk(selDate),ci,ei);
 }
 function perAdd(ci,ei,v){
   v=(v||'').trim();
@@ -1897,9 +2145,10 @@ function fmtPersonal(v){
 async function addEntry(ci){
   if(!selDate) return;
   const key=dk(selDate);
-  markDayEdited(key);
   const dayData=getDayData(key);
   dayData.drivers[ci].entries.push({});
+  const ei=dayData.drivers[ci].entries.length-1;
+  markEntryEdited(key,ci,ei);
   await saveSilent();
   selectDay(selDate);
   setTimeout(()=>{
@@ -1913,7 +2162,7 @@ async function removeEntry(ci,ei){
   if(!confirm('¿Eliminar esta salida?')) return;
   if(autoSaveTimer) clearTimeout(autoSaveTimer);
   const key=dk(selDate);
-  markDayEdited(key);
+  markEntryRemoved(key,ci,ei);
   const dayData=getDayData(key);
   dayData.drivers[ci].entries.splice(ei,1);
   await persistState();
@@ -1924,7 +2173,7 @@ async function saveEntry(ci,ei){
   if(!selDate) return;
   readFromDOM();
   const key=dk(selDate);
-  markDayEdited(key);
+  markEntryEdited(key,ci,ei);
   const dayData=getDayData(key);
   const entry=dayData.drivers[ci].entries[ei];
   await saveSilent();
@@ -1956,6 +2205,7 @@ function readFromDOM(){
       e.personal    =document.getElementById(`e${ci}_${ei}_per`)?.value||'';
       e.obs         =document.getElementById(`e${ci}_${ei}_obs`)?.value||'';
       e.placa       =document.getElementById(`e${ci}_${ei}_placa`)?.value||'';
+      if(entryHasContent(e)) ensureEntryId(e,ci,d.entries);
     });
   }
 }
@@ -1974,11 +2224,22 @@ function scheduleAutoSave(){
     if(selDate){ saveSilent(); }
   },2000);
 }
+function markDomEdited(target){
+  if(!target||!target.id||!selDate) return;
+  var m=target.id.match(/^e(\d+)_(\d+)_/);
+  if(m) markEntryEdited(dk(selDate),parseInt(m[1],10),parseInt(m[2],10));
+}
 document.addEventListener('input',function(e){
-  if(e.target.closest&&e.target.closest('.detail-body')) scheduleAutoSave();
+  if(e.target.closest&&e.target.closest('.detail-body')){
+    markDomEdited(e.target);
+    scheduleAutoSave();
+  }
 });
 document.addEventListener('change',function(e){
-  if(e.target.closest&&e.target.closest('.detail-body')) scheduleAutoSave();
+  if(e.target.closest&&e.target.closest('.detail-body')){
+    markDomEdited(e.target);
+    scheduleAutoSave();
+  }
 });
 window.addEventListener('beforeunload',function(){
   if(autoSaveTimer) clearTimeout(autoSaveTimer);
@@ -2059,6 +2320,9 @@ async function saveDay(){
   const key=dk(selDate);
   markDayEdited(key);
   const dayData=getDayData(key);
+  for(let ci=0;ci<conductores.length;ci++){
+    dayData.drivers[ci].entries.forEach((e,ei)=>{ markEntryEdited(key,ci,ei); });
+  }
   var faltaObs=[];
   for(let ci=0;ci<conductores.length;ci++){
     for(let ei=0;ei<dayData.drivers[ci].entries.length;ei++){
