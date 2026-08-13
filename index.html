@@ -786,12 +786,12 @@ async function loadSharedState(){
           var isNL = !!day.noLaborable;
           var nlDescVal = day.nlDesc || '';
           if(!isNL && nlDays[key] && nlDays[key].nl){ isNL=true; nlDescVal=nlDescVal||nlDays[key].desc||''; }
-          data[key] = { drivers: driversArr, noLaborable: isNL, nlDesc: nlDescVal };
+          data[key] = { drivers: driversArr, noLaborable: isNL, nlDesc: nlDescVal, updatedAt: day.updatedAt || 0 };
         }
       }
       for(const key in nlDays){
         if(!data[key] && nlDays[key].nl){
-          data[key]={drivers:Array.from({length:conductores.length},()=>({entries:[]})),noLaborable:true,nlDesc:nlDays[key].desc||''};
+          data[key]={drivers:Array.from({length:conductores.length},()=>({entries:[]})),noLaborable:true,nlDesc:nlDays[key].desc||'',updatedAt:0};
         }
       }
       localStorage.setItem('cond5',JSON.stringify(conductores));
@@ -825,7 +825,7 @@ async function loadSharedState(){
             });
             var isNL=!!day.noLaborable;
             var nlDescVal=day.nlDesc||'';
-            data[k]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
+            data[k]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal,updatedAt:day.updatedAt||0};
           }
         }
         notas=serverState.notas||[];
@@ -859,8 +859,13 @@ async function loadSharedState(){
 var pendingFirebaseSave=null;
 var firebaseRetryTimer=null;
 var editedDays={};
+var dirtyDays={};
 var lastLocalWriteTs=0;
-function markDayEdited(key){ editedDays[key]=true; }
+function markDayEdited(key){
+  editedDays[key]=true;
+  dirtyDays[key]=true;
+  if(data[key]) data[key].updatedAt=Date.now();
+}
 function showDiag(msg){
   var p=document.getElementById('diagPanel');
   if(!p) return;
@@ -883,109 +888,23 @@ async function persistState(){
   localStorage.setItem('sched5_ts',String(Date.now()));
   var remoteSaved=false;
   if(serverReady && !dataIsStale){
-    showSaving();
-    try{
-      const cleanData = {};
-      const nlBackup = {};
-      for(const key in data){
-        const day = data[key];
-        if(day && day.drivers){
-          cleanData[key] = {
-            noLaborable: !!day.noLaborable,
-            nlDesc: day.nlDesc || '',
-            drivers: day.drivers.map(d => {
-              if(!d) return {entries:[]};
-              return {entries: fixEntries(d.entries).map(e => ({
-                horaSalida: e.horaSalida || '',
-                inspecciones: e.inspecciones || '',
-                comision: e.comision || '',
-                retorno: e.retorno || '',
-                personal: e.personal || '',
-                obs: e.obs || '',
-                placa: e.placa || ''
-              }))};
-            })
-          };
-          if(day.noLaborable) nlBackup[key]={nl:true,desc:day.nlDesc||''};
-        }
-      }
-      await db.ref('calendario').set({conductores, data: cleanData, notas, reuniones, _updatedAt: Date.now()});
-      await db.ref('calendario/nlDays').set(nlBackup);
-      lastLocalWriteTs=Date.now();
-      pendingFirebaseSave=null;
-      editedDays={};
-      remoteSaved=true;
-      showSaved();
-    }catch(err){
-      console.error('[persistState] Firebase write FAILED:', err.code, err.message);
-      showDiag('FIREBASE ERROR al GUARDAR:\n'+(err.code||'')+' '+(err.message||'')+'\n\nSi dice PERMISSION_DENIED, las reglas de seguridad de Firebase están bloqueando. Ve a Firebase Console > Realtime Database > Rules y pon ".read": true, ".write": true');
-      showError();
-      showToast('⚠️ No se pudo guardar en Firebase. Reintentando...');
-      pendingFirebaseSave=true;
-      scheduleFirebaseRetry();
-    }
+    remoteSaved=await writeToFirebase();
   }else if(dataIsStale){
     try{
       const snap = await db.ref('calendario').once('value');
       const state = snap.val();
       if(state && state.data && Object.keys(state.data).length > 0){
-        const remoteData = {};
-        for(const key in state.data){
-          const day = state.data[key];
-          if(day && day.drivers){
-            const nCond = state.conductores ? state.conductores.length : conductores.length;
-            remoteData[key] = {
-              noLaborable: !!day.noLaborable,
-              nlDesc: day.nlDesc || '',
-              drivers: firebaseToArray(day.drivers, nCond).map(d => {
-                if(!d) return {entries:[]};
-                return {entries: fixEntries(d.entries)};
-              })
-            };
-          }
-        }
-        const remoteNlDays = state.nlDays || {};
-        const mergedNlDays = Object.assign({}, remoteNlDays);
-        for(const key in editedDays){
-          if(data[key]) remoteData[key] = data[key];
-          if(data[key] && data[key].noLaborable) mergedNlDays[key] = {nl:true,desc:data[key].nlDesc||''};
-          else delete mergedNlDays[key];
-        }
-        const mergedConductores = (state.conductores || DEFAULTS).map(v => (v || '').toString());
-        const mergedNotas = Array.isArray(state.notas) ? state.notas : notas;
-        const mergedReuniones = state.reuniones || reuniones;
-        data = remoteData;
-        conductores = mergedConductores;
-        notas = mergedNotas;
-        reuniones = mergedReuniones;
-        dataIsStale = false;
-        localStorage.setItem('cond5',JSON.stringify(conductores));
-        localStorage.setItem('sched5',JSON.stringify(data));
-        localStorage.setItem('notas6',JSON.stringify(notas));
-        localStorage.setItem('reuniones5',JSON.stringify(reuniones));
-        try{
-          const writeTs=Date.now();
-          await db.ref('calendario').set({conductores, data: remoteData, notas, reuniones, _updatedAt: writeTs});
-          await db.ref('calendario/nlDays').set(mergedNlDays);
-          lastLocalWriteTs=writeTs;
-          pendingFirebaseSave=null;
-          remoteSaved=true;
-          showSaved();
-          var nMerged=Object.keys(editedDays).length;
-          editedDays={};
-          showDiag('MERGE OK: se combinaron los datos remotos con tus ' + nMerged + ' días editados localmente.');
-        }catch(err){
-          showError();
-          showToast('⚠️ No se pudo sincronizar. Reintentando...');
-          pendingFirebaseSave=true;
-          scheduleFirebaseRetry();
-        }
-      }else{
-        pendingFirebaseSave=null;
-        remoteSaved=true;
+        const parsed=parseFirebaseState(state);
+        if(parsed) applyRemoteState(parsed,null);
       }
+      dataIsStale=false;
+      remoteSaved=await writeToFirebase();
     }catch(err){
-      pendingFirebaseSave=null;
+      dataIsStale=true;
+      pendingFirebaseSave=true;
+      scheduleFirebaseRetry();
+      showError();
+      showToast('⚠️ No se pudo sincronizar. Reintentando...');
     }
   }else{
     pendingFirebaseSave=true;
@@ -997,15 +916,7 @@ async function persistState(){
     for(var sk in data){
       var day=data[sk];
       if(day&&day.drivers){
-        serverPayload.data[sk]={
-          noLaborable:!!day.noLaborable,nlDesc:day.nlDesc||'',
-          drivers:day.drivers.map(function(d){
-            if(!d)return{entries:[]};
-            return{entries:fixEntries(d.entries).map(function(e){
-              return{horaSalida:e.horaSalida||'',inspecciones:e.inspecciones||'',comision:e.comision||'',retorno:e.retorno||'',personal:e.personal||'',obs:e.obs||'',placa:e.placa||''};
-            })};
-          })
-        };
+        serverPayload.data[sk]=cleanDayForStorage(day);
       }
     }
     fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serverPayload)}).then(function(r){if(r.ok)remoteSaved=true;}).catch(function(){});
@@ -1015,6 +926,65 @@ async function persistState(){
   localStorage.setItem('notas6',JSON.stringify(notas));
   localStorage.setItem('reuniones5',JSON.stringify(reuniones));
   return remoteSaved;
+}
+
+function cleanDayForStorage(day){
+  if(!day) return {drivers:[],noLaborable:false,nlDesc:'',updatedAt:0};
+  return {
+    noLaborable: !!day.noLaborable,
+    nlDesc: day.nlDesc || '',
+    updatedAt: day.updatedAt || 0,
+    drivers: day.drivers.map(function(d){
+      if(!d) return {entries:[]};
+      return {entries: fixEntries(d.entries).map(function(e){
+        return {horaSalida:e.horaSalida||'',inspecciones:e.inspecciones||'',comision:e.comision||'',retorno:e.retorno||'',personal:e.personal||'',obs:e.obs||'',placa:e.placa||''};
+      })};
+    })
+  };
+}
+
+function writeDayToFirebase(key, remove){
+  var ref=db.ref('calendario/data/'+key);
+  return ref.transaction(function(current){
+    if(!remove && current && current.updatedAt && data[key] && data[key].updatedAt && current.updatedAt>data[key].updatedAt){
+      return;
+    }
+    if(remove) return null;
+    var clean=cleanDayForStorage(data[key]);
+    if(!clean.updatedAt) clean.updatedAt=Date.now();
+    return clean;
+  });
+}
+
+async function writeToFirebase(){
+  try{
+    showSaving();
+    var now=Date.now();
+    var updates={};
+    updates['conductores']=conductores;
+    updates['notas']=notas;
+    updates['reuniones']=reuniones;
+    updates['_updatedAt']=now;
+    await db.ref('calendario').update(updates);
+    var keys=Object.keys(dirtyDays);
+    for(var i=0;i<keys.length;i++){
+      await writeDayToFirebase(keys[i], !data[keys[i]]);
+    }
+    lastLocalWriteTs=Date.now();
+    pendingFirebaseSave=null;
+    editedDays={};
+    dirtyDays={};
+    showSaved();
+    return true;
+  }catch(err){
+    console.error('[persistState] Firebase write FAILED:', err.code, err.message);
+    showDiag('FIREBASE ERROR al GUARDAR:\n'+(err.code||'')+' '+(err.message||'')+'\n\nSi dice PERMISSION_DENIED, las reglas de seguridad de Firebase están bloqueando. Ve a Firebase Console > Realtime Database > Rules y pon ".read": true, ".write": true');
+    showError();
+    showToast('⚠️ No se pudo guardar en Firebase. Reintentando...');
+    pendingFirebaseSave=true;
+    scheduleFirebaseRetry();
+    return false;
+  }
 }
 function scheduleFirebaseRetry(){
   if(firebaseRetryTimer) clearTimeout(firebaseRetryTimer);
@@ -1156,12 +1126,12 @@ function parseFirebaseState(state){
       var isNL=!!day.noLaborable;
       var nlDescVal=day.nlDesc||'';
       if(!isNL&&nlDays[key]&&nlDays[key].nl){isNL=true;nlDescVal=nlDescVal||nlDays[key].desc||'';}
-      ndata[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal};
+      ndata[key]={drivers:driversArr,noLaborable:isNL,nlDesc:nlDescVal,updatedAt:day.updatedAt||0};
     }
   }
   for(var k in nlDays){
     if(!ndata[k]&&nlDays[k].nl){
-      ndata[k]={drivers:Array.from({length:out.conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||''};
+      ndata[k]={drivers:Array.from({length:out.conductores.length},function(){return{entries:[]};}),noLaborable:true,nlDesc:nlDays[k].desc||'',updatedAt:0};
     }
   }
   out.data=ndata;
@@ -1170,12 +1140,17 @@ function parseFirebaseState(state){
 }
 function applyRemoteState(parsed,msg){
   if(!parsed) return;
-  var pendingKeys=Object.keys(editedDays);
   var merged={};
-  for(var key in parsed.data) merged[key]=parsed.data[key];
-  for(var i=0;i<pendingKeys.length;i++){
-    var pk=pendingKeys[i];
-    if(data[pk]) merged[pk]=data[pk];
+  for(var key in parsed.data){
+    var rd=parsed.data[key];
+    var ld=data[key];
+    var rts=rd&&rd.updatedAt?rd.updatedAt:0;
+    var lts=ld&&ld.updatedAt?ld.updatedAt:0;
+    if(!ld || rts>=lts) merged[key]=rd;
+    else merged[key]=ld;
+  }
+  for(var k in data){
+    if(!merged[k]) merged[k]=data[k];
   }
   conductores=parsed.conductores;
   notas=parsed.notas;
