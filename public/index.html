@@ -382,9 +382,9 @@ body::after{
 const firebaseConfig = {
   apiKey: "AIzaSyAFREUO_r9eAlMxcMIMY2R0LKJvQ4zgjJs",
   authDomain: "calendariojushr.firebaseapp.com",
+  databaseURL: "https://calendariojushr-default-rtdb.firebaseio.com",
   projectId: "calendariojushr",
   storageBucket: "calendariojushr.firebasestorage.app",
-  messagingSenderId: "1011396869341",
   appId: "1:1011396869341:web:3d445c0838167005b1af34"
 };
 firebase.initializeApp(firebaseConfig);
@@ -1987,6 +1987,7 @@ function selectDay(dt){
   }
 
   document.getElementById('detailBody').innerHTML=html;
+  autoGrowTextareas(document.getElementById('detailBody'));
   initPerChips();
   renderMonth();
   if(view==='week') renderWeek();
@@ -2029,6 +2030,15 @@ function saveNlDesc(){
   },1500);
 }
 
+function autoGrow(el){
+  if(!el) return;
+  el.style.height='';
+  el.style.height=el.scrollHeight+'px';
+}
+function autoGrowTextareas(scope){
+  (scope||document).querySelectorAll('textarea').forEach(function(t){ autoGrow(t); });
+}
+
 function entryHTML(ci,ei,e){
   e=e||{};
   const PERSONAL_LIST = ['OPEMADE','LUIS ZANABRIA','LEONARDO SEA','MAC AGUIRRE','STEVEN MAMANI','JULIA SAUCEDO','JIMMI LIMAYMANTA','GENESSIS LESCANO','ROSALIA GONZALES','JUAN CABREJOS','VICTOR PALOMINO'];
@@ -2064,7 +2074,7 @@ function entryHTML(ci,ei,e){
           ${VEHICULOS.map(v=>`<option value="${v.placa}" ${e.placa===v.placa?'selected':''}>${v.placa} — ${v.desc}</option>`).join('')}
         </select></div>
       <div class="fg"><label>📝 Detalles de la Inspección</label>
-        <textarea id="e${ci}_${ei}_obs" placeholder="Detalles de la inspección (obligatorio)" oninput="this.style.height='';this.style.height=this.scrollHeight+'px'" style="resize:none;overflow:hidden;min-height:32px">${e.obs||''}</textarea></div>
+        <textarea id="e${ci}_${ei}_obs" placeholder="Detalles de la inspección (obligatorio)" oninput="autoGrow(this)" onfocus="autoGrow(this)" style="resize:none;overflow:hidden;min-height:32px">${e.obs||''}</textarea></div>
     </div>
     <div class="entry-actions">
       <button class="btn btn-success btn-sm" onclick="saveEntry(${ci},${ei})" title="Guardar solo esta salida">💾 Guardar</button>
