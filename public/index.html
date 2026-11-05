@@ -1975,7 +1975,7 @@ function selectDay(dt){
       '<div class="driver-head" onclick="toggleD('+ci+')">'+
         '<div class="dcolor" style="background:'+COLORS[ci]+'"></div>'+
         '<input class="dname-input" id="dni'+ci+'" value="'+nm.replace(/"/g,'&quot;')+'" onclick="event.stopPropagation()"'+
-          ' onchange="updateName('+ci+',this.value)" title="Editar nombre">'+
+          ' onchange="updateName('+ci+',this.value,this)" title="Editar nombre (requiere contraseña)">'+
         '<span class="dbadge bg'+ci+'">'+(cnt?cnt+' salida'+(cnt>1?'s':''):'Sin datos')+'</span>'+
         '<span class="dtoggle'+(cnt?' open':'')+'" id="dtg'+ci+'">&#9660;</span>'+
       '</div>'+
@@ -2385,7 +2385,22 @@ async function clearDay(){
 }
 
 // ===================== CONDUCTORES =====================
-async function updateName(ci,val){
+const COND_EDIT_PASS = 'admin2026';
+function requireCondEditPass(){
+  if(sessionStorage.getItem('cond_edit_ok')==='1') return true;
+  var p = prompt('Ingrese la contraseña para editar nombres de conductores:');
+  if(p === COND_EDIT_PASS){
+    sessionStorage.setItem('cond_edit_ok','1');
+    return true;
+  }
+  if(p !== null) showToast('❌ Contraseña incorrecta');
+  return false;
+}
+async function updateName(ci,val,el){
+  if(!requireCondEditPass()){
+    if(el) el.value = conductores[ci] || '';
+    return;
+  }
   conductores[ci]=val;
   try{ await persistState(); }catch(err){ showToast('No se pudo guardar en red'); }
   updateLegend();
@@ -2405,6 +2420,7 @@ function rebuildCondModal(){
     '<button class="btn btn-ghost btn-sm" onclick="addConductor()" style="margin-top:6px;width:100%;border:1.5px dashed var(--border)">+ Agregar conductor</button>';
 }
 function openModal(){
+  if(!requireCondEditPass()) return;
   tempConductores=conductores.slice();
   rebuildCondModal();
   document.getElementById('condOverlay').classList.add('open');
