@@ -4819,11 +4819,11 @@ function renderTablaComisionesDOM() {
         <td style="min-width:160px">
           <input type="text" class="com-cell-input" value="${escapeComAttr(item.canal)}" placeholder="Nombre del canal..." oninput="updateComisionField('${com}', ${idx}, 'canal', this.value)">
         </td>
-        <td style="min-width:160px">
-          <input type="text" class="com-cell-input" value="${escapeComAttr(item.expediente)}" placeholder="Ej. Exp. 1386-2026..." oninput="updateComisionField('${com}', ${idx}, 'expediente', this.value)" style="font-weight:600;color:var(--c1)">
-        </td>
         <td style="min-width:240px">
           <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción / actividad..." oninput="updateComisionField('${com}', ${idx}, 'descripcion', this.value)">
+        </td>
+        <td style="min-width:160px">
+          <input type="text" class="com-cell-input" value="${escapeComAttr(item.expediente)}" placeholder="Ej. Exp. 1386-2026..." oninput="updateComisionField('${com}', ${idx}, 'expediente', this.value)" style="font-weight:600;color:var(--c1)">
         </td>
         <td style="text-align:center;width:45px">
           <button class="com-del-btn" title="Eliminar fila" onclick="eliminarFilaComision('${com}', ${idx})">🗑️</button>
@@ -4845,8 +4845,8 @@ function renderTablaComisionesDOM() {
           <th class="sub-th" style="width:130px">📅 Inicio</th>
           <th class="sub-th" style="width:130px">📅 Fin</th>
           <th class="sub-th" style="min-width:160px">🌊 Canal</th>
-          <th class="sub-th" style="min-width:160px">📁 Exp. Referencia</th>
           <th class="sub-th" style="min-width:240px">📝 Descripción</th>
+          <th class="sub-th" style="min-width:160px">📁 Exp. Referencia</th>
           <th class="sub-th" style="width:45px">Acción</th>
         </tr>
       </thead>
@@ -4876,8 +4876,8 @@ function renderTablaComisionesDOM() {
           <th class="sub-th" style="width:125px">📅 Inicio</th>
           <th class="sub-th" style="width:125px">📅 Fin</th>
           <th class="sub-th" style="min-width:130px">🌊 Canal</th>
-          <th class="sub-th" style="min-width:130px">📁 Exp. Ref.</th>
           <th class="sub-th" style="min-width:180px">📝 Descripción</th>
+          <th class="sub-th" style="min-width:130px">📁 Exp. Ref.</th>
         `).join('')}
       </tr>
     `;
@@ -4904,11 +4904,11 @@ function renderTablaComisionesDOM() {
               <input type="text" class="com-cell-input" value="${escapeComAttr(item.canal)}" placeholder="Canal..." oninput="updateComisionField('${c}', ${r}, 'canal', this.value)">
             </td>
             <td style="${cellBg}">
-              <input type="text" class="com-cell-input" value="${escapeComAttr(item.expediente)}" placeholder="Exp. Ref..." oninput="updateComisionField('${c}', ${r}, 'expediente', this.value)" style="font-weight:600;color:var(--c1)">
+              <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción..." oninput="updateComisionField('${c}', ${r}, 'descripcion', this.value)">
             </td>
             <td style="${cellBg}">
               <div style="display:flex;align-items:center;gap:3px">
-                <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción..." oninput="updateComisionField('${c}', ${r}, 'descripcion', this.value)">
+                <input type="text" class="com-cell-input" value="${escapeComAttr(item.expediente)}" placeholder="Exp. Ref..." oninput="updateComisionField('${c}', ${r}, 'expediente', this.value)" style="font-weight:600;color:var(--c1)">
                 <button class="com-del-btn" title="Eliminar fila de ${c}" onclick="eliminarFilaComision('${c}', ${r})">🗑️</button>
               </div>
             </td>
@@ -5174,7 +5174,7 @@ function exportarComisionesExcel() {
 
   const subRow = [];
   COMISIONES_LIST.forEach(() => {
-    subRow.push('Inicio', 'Fin', 'Canal', 'Exp. Referencia', 'Descripción');
+    subRow.push('Inicio', 'Fin', 'Canal', 'Descripción', 'Exp. Referencia');
   });
   rows.push(subRow);
 
@@ -5184,7 +5184,7 @@ function exportarComisionesExcel() {
     COMISIONES_LIST.forEach(c => {
       const item = (comisionesData[c] && comisionesData[c][r]) ? comisionesData[c][r] : null;
       if (item) {
-        dataRow.push(item.inicio || '', item.fin || '', item.canal || '', item.expediente || '', item.descripcion || '');
+        dataRow.push(item.inicio || '', item.fin || '', item.canal || '', item.descripcion || '', item.expediente || '');
       } else {
         dataRow.push('', '', '', '', '');
       }
