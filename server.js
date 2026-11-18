@@ -2,15 +2,19 @@ const http = require('http');
 const fs = require('fs/promises');
 const path = require('path');
 
-const PORT = Number(process.env.PORT || 8080);
+const rawPort = process.env.PORT;
+const parsedPort = Number(rawPort);
+const PORT = (!isNaN(parsedPort) && parsedPort > 0 && parsedPort < 65536) ? parsedPort : 8080;
 const ROOT = __dirname;
 const PUBLIC_DIR = path.join(ROOT, 'public');
-const DATA_DIR = process.env.INSPECCIONES_DATA_DIR || path.join(ROOT, 'data');
+const defaultDataDir = path.join(ROOT, 'data');
+const DATA_DIR = (process.env.INSPECCIONES_DATA_DIR && process.env.INSPECCIONES_DATA_DIR.trim()) || defaultDataDir;
 const DB_FILE = path.join(DATA_DIR, 'inspecciones.json');
 
 const DEFAULT_STATE = {
   conductores: ['JACK', 'DINO', 'MIGUEL', 'GODOY', ''],
-  data: {}
+  data: {},
+  comisiones: {}
 };
 
 const MIME = {
@@ -70,7 +74,8 @@ function normalizeState(parsed) {
     conductores: Array.isArray(parsed.conductores) ? parsed.conductores : DEFAULT_STATE.conductores,
     data: parsed.data && typeof parsed.data === 'object' ? parsed.data : {},
     notas: Array.isArray(parsed.notas) ? parsed.notas : [],
-    reuniones: parsed.reuniones && typeof parsed.reuniones === 'object' ? parsed.reuniones : {}
+    reuniones: parsed.reuniones && typeof parsed.reuniones === 'object' ? parsed.reuniones : {},
+    comisiones: parsed.comisiones && typeof parsed.comisiones === 'object' ? parsed.comisiones : {}
   };
 }
 
@@ -92,7 +97,8 @@ function saveState(state) {
       conductores: Array.isArray(state.conductores) ? state.conductores : DEFAULT_STATE.conductores,
       data: state.data && typeof state.data === 'object' ? state.data : {},
       notas: Array.isArray(state.notas) ? state.notas : [],
-      reuniones: state.reuniones && typeof state.reuniones === 'object' ? state.reuniones : {}
+      reuniones: state.reuniones && typeof state.reuniones === 'object' ? state.reuniones : {},
+      comisiones: state.comisiones && typeof state.comisiones === 'object' ? state.comisiones : {}
     };
     const tmp = `${DB_FILE}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(next, null, 2), 'utf8');

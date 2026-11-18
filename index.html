@@ -10,6 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="Inspecciones">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231B2B4B' width='100' height='100' rx='20'/><text x='50' y='62' font-size='48' text-anchor='middle' fill='white'>📋</text></svg>">
 <title>Calendario de Inspecciones</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
@@ -358,6 +361,446 @@ body::after{
   #connMonitor{font-size:9px;padding:3px 7px;bottom:8px;left:8px}
   #connDot{width:6px;height:6px}
 }
+
+/* ===================== CONTROL DE EXPEDIENTES ===================== */
+.exp-badge-select {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.92);
+  color: #0f172a;
+  cursor: pointer;
+  outline: none;
+}
+#expedientesPanel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  padding: 14px 18px;
+  gap: 12px;
+}
+#expedientesPanel.active-tab {
+  display: flex;
+}
+.exp-toolbar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px var(--shadow);
+}
+.exp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.exp-input {
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  outline: none;
+}
+.exp-input:focus {
+  border-color: var(--c1);
+}
+.exp-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.exp-legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.leg-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.leg-sin { background: #ef4444; }
+.leg-proc { background: #facc15; }
+.leg-aten { background: #22c55e; }
+
+.exp-table-wrap {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 1px 4px var(--shadow);
+}
+.exp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px; /* Fuente más grande */
+}
+.exp-table th {
+  position: sticky;
+  top: 0;
+  background: var(--navy);
+  color: #fff;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 13px; /* Encabezado más grande */
+  font-weight: 700;
+  border: 1px solid var(--navy2);
+  z-index: 10;
+  white-space: nowrap;
+}
+.exp-table td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  vertical-align: middle;
+  background: var(--surface);
+  color: var(--text);
+}
+.exp-table tr:hover td {
+  background: rgba(59, 130, 246, 0.05);
+}
+.exp-table td.col-fecha {
+  font-weight: 700;
+  font-size: 13px;
+  text-align: left;
+  padding-left: 12px;
+  white-space: nowrap;
+  background: rgba(0,0,0,0.02);
+  width: 160px;
+}
+/* Área de celdas: compacta y flexible para no estirarse */
+.exp-cell-area {
+  min-height: 38px;
+  display: flex;
+  flex-wrap: wrap; /* Flujo horizontal */
+  gap: 6px;
+  align-items: center;
+}
+/* Tarjeta de cada expediente: tipo chip horizontal compacto con fuente clara */
+.exp-badge-item {
+  display: inline-flex;
+  flex-direction: row !important; /* En línea, no vertical */
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px !important;
+  border-radius: 6px;
+  font-size: 13px !important; /* Fuente más legible */
+  font-weight: 700;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  white-space: nowrap;
+}
+.exp-badge-sin {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #f87171;
+}
+.exp-badge-proc {
+  background: #fef08a;
+  color: #854d0e;
+  border-color: #facc15;
+}
+.exp-badge-aten {
+  background: #bbf7d0;
+  color: #166534;
+  border-color: #4ade80;
+}
+.badge-del {
+  cursor: pointer;
+  opacity: 0.6;
+  font-weight: bold;
+  padding: 0 3px;
+  font-size: 13px;
+}
+.badge-del:hover {
+  opacity: 1;
+  color: #dc2626;
+}
+.exp-quick-add {
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 7px;
+  cursor: pointer;
+  width: auto;
+  align-self: center;
+}
+.exp-quick-add:hover {
+  background: var(--c1l);
+  color: var(--c1);
+  border-color: var(--c1);
+}
+
+/* Modal Histograma */
+#modalHisto {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+#modalHisto.open {
+  display: flex;
+}
+.histo-box {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 22px;
+  width: 90%;
+  max-width: 860px;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+@media print {
+  .header, .exp-toolbar, .exp-quick-add, .badge-del, .hbtns, .btn, .com-toolbar, .com-pills, .com-del-btn, .com-add-row-btn {
+    display: none !important;
+  }
+  #expedientesPanel, #comisionesPanel {
+    padding: 0;
+  }
+  .exp-table-wrap, .com-table-wrap {
+    overflow: visible;
+    border: none;
+  }
+}
+
+/* ===================== COMISIONES DE USUARIOS ===================== */
+#comisionesPanel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  padding: 14px 18px;
+  gap: 12px;
+}
+#comisionesPanel.active-tab {
+  display: flex;
+}
+.com-toolbar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px var(--shadow);
+}
+.com-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.com-input {
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.com-input:focus {
+  border-color: var(--c1);
+}
+.com-pills {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 2px 2px 6px 2px;
+}
+.com-pill {
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  white-space: nowrap;
+  transition: all .15s;
+  user-select: none;
+}
+.com-pill:hover {
+  background: var(--navy3);
+  color: #fff;
+}
+.com-pill.active {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+}
+body.dark .com-pill.active {
+  background: var(--amber);
+  color: var(--navy);
+  border-color: var(--amber);
+}
+.com-table-wrap {
+  flex: 1;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 4px var(--shadow);
+  position: relative;
+}
+.com-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 1300px;
+}
+.com-table th, .com-table td {
+  border: 1px solid var(--border);
+  padding: 5px 6px;
+  text-align: left;
+}
+.com-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.com-table th.main-title-th {
+  background: #bdd7ee;
+  color: #1e3a8a;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 10px;
+  letter-spacing: .06em;
+  border-bottom: 2px solid #93c5fd;
+}
+body.dark .com-table th.main-title-th {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border-bottom-color: #3b82f6;
+}
+.com-table th.com-name-th {
+  background: var(--navy);
+  color: #fff;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 6px;
+  letter-spacing: .04em;
+}
+.com-table th.sub-th {
+  background: var(--navy2);
+  color: #f1f5f9;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 4px;
+}
+.com-cell-input {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--text);
+  outline: none;
+  box-sizing: border-box;
+}
+.com-cell-input:hover {
+  border-color: var(--border);
+  background: var(--bg);
+}
+.com-cell-input:focus {
+  border-color: var(--c1);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--c1);
+}
+.com-date-input {
+  width: 125px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-size: 11.5px;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+.com-date-input:focus {
+  border-color: var(--c1);
+}
+.com-del-btn {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all .15s;
+}
+.com-del-btn:hover {
+  background: #fee2e2;
+}
+body.dark .com-del-btn:hover {
+  background: #450a0a;
+}
+.com-add-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px dashed var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.com-add-row-btn:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+  background: #eff6ff;
+}
+body.dark .com-add-row-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(245,158,11,.15);
+}
+
 </style>
 </head>
 <body>
@@ -389,6 +832,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+window.db = db;
 if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){})}
 // water drop click
 document.getElementById('waterDrop').addEventListener('click', function(){
@@ -418,12 +862,197 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     </div>
   </div>
   <div class="hbtns">
+    
+    <button class="btn btn-ghost btn-sm main-tab-btn active" id="btnTabCal" onclick="switchMainTab('cal')">📅 Calendario</button>
+    <button class="btn btn-amber btn-sm main-tab-btn" id="btnTabExp" onclick="switchMainTab('exp')">📁 Expedientes</button>
+    <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabCom" onclick="switchMainTab('com')">🌊 Comisiones de Usuarios</button>
     <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
     <button class="btn btn-ghost btn-sm" onclick="openModal()">⚙️ Conductores</button>
     <button class="btn btn-ghost btn-sm" onclick="openReuniones()">📋 Reuniones</button>
     <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 CSV</button>
     <button class="btn btn-amber btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     <button class="btn btn-ghost btn-sm" onclick="logout()" title="Cerrar sesión">🚪</button>
+  </div>
+</div>
+
+
+<!-- EXPEDIENTES PANEL -->
+<div id="expedientesPanel">
+  <div class="exp-toolbar">
+    <div class="exp-filters">
+      <span style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:4px">🔍 Filtros:</span>
+      <input type="text" id="filtroExpNum" class="exp-input" placeholder="Por N° Exp (ej. 1386)" style="width:170px" oninput="filtrarExpedientes()">
+      <select id="filtroExpEstado" class="exp-input" onchange="filtrarExpedientes()">
+        <option value="">Todos los Estados</option>
+        <option value="Sin atender">🔴 Sin atender</option>
+        <option value="En proceso">🟡 En proceso</option>
+        <option value="Atendido">🟢 Atendido</option>
+      </select>
+      <select id="filtroExpPersona" class="exp-input" onchange="filtrarExpedientes()">
+        <option value="">Todo el Personal</option>
+        <option value="0">Luis Zanabría Valderrama</option>
+        <option value="1">Leonardo Sea Ordaya</option>
+        <option value="2">Mac Aguirre Ilizarbe</option>
+        <option value="3">Mary Castrillon</option>
+        <option value="4">Genessis Lescano Figueroa</option>
+        <option value="5">Steven Mamani Tito</option>
+        <option value="6">Rosalía Gonzales Relaisa</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" style="border:1px solid var(--border);color:var(--text)" onclick="limpiarFiltrosExp()">✖ Limpiar</button>
+    </div>
+
+    <div class="exp-actions">
+      <div class="exp-legend">
+        <span><span class="leg-dot leg-sin"></span>Sin atender</span>
+        <span><span class="leg-dot leg-proc"></span>En proceso</span>
+        <span><span class="leg-dot leg-aten"></span>Atendido</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="border:1px solid var(--border);color:var(--text)" onclick="abrirHistograma()">📊 Histograma</button>
+      <button class="btn btn-success btn-sm" onclick="exportarExpedientesExcel()">📥 Excel</button>
+      <button class="btn btn-amber btn-sm" onclick="imprimirExpedientesPDF()">🖨️ PDF / Imprimir</button>
+    </div>
+  </div>
+
+  <div class="exp-table-wrap">
+    <table class="exp-table" id="tablaExpedientes">
+      <thead id="theadExpedientes">
+        <!-- Renderizado dinámicamente según filtro de personal -->
+      </thead>
+      <tbody id="tbodyExpedientes">
+        <!-- Generado dinámicamente -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- COMISIONES DE USUARIOS PANEL -->
+<div id="comisionesPanel">
+  <div class="com-toolbar">
+    <div class="com-filters">
+      <span style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:4px">🔍 Buscar:</span>
+      <input type="text" id="filtroComTexto" class="com-input" placeholder="Buscar canal o descripción..." style="width:220px" oninput="filtrarComisiones()">
+      <span style="font-weight:700;font-size:12px;color:var(--muted);margin-left:6px">Comisión:</span>
+      <select id="filtroComSelect" class="com-input" onchange="seleccionarComision(this.value)">
+        <option value="TODAS">🏢 Todas las Comisiones</option>
+        <option value="ATE">ATE</option>
+        <option value="SURCO">SURCO</option>
+        <option value="CHOSICA">CHOSICA</option>
+        <option value="CHACRASANA">CHACRASANA</option>
+        <option value="CHACLACAYO">CHACLACAYO</option>
+        <option value="LA ESTRELLA">LA ESTRELLA</option>
+        <option value="ÑAÑA">ÑAÑA</option>
+        <option value="CARAPONGO">CARAPONGO</option>
+        <option value="HUACHIPA">HUACHIPA</option>
+        <option value="NIEVERÍA">NIEVERÍA</option>
+        <option value="RICARDO PALMA">RICARDO PALMA</option>
+        <option value="PARCA">PARCA</option>
+      </select>
+      <button class="btn btn-navy btn-sm" onclick="agregarFilaComisionActual()">➕ Nueva Fila</button>
+      <span id="comSaveStatus" style="font-size:11px;font-weight:600;color:#10b981;margin-left:8px;display:none">💾 Guardado</span>
+    </div>
+
+    <div class="exp-actions">
+      <button class="btn btn-success btn-sm" onclick="exportarComisionesExcel()">📥 Excel</button>
+      <button class="btn btn-amber btn-sm" onclick="imprimirComisionesPDF()">🖨️ PDF / Imprimir</button>
+    </div>
+  </div>
+
+  <!-- Pestañas de acceso rápido a cada comisión -->
+  <div class="com-pills" id="comPills">
+    <div class="com-pill active" onclick="seleccionarComision('TODAS')">🏢 Todas</div>
+    <div class="com-pill" onclick="seleccionarComision('ATE')">ATE</div>
+    <div class="com-pill" onclick="seleccionarComision('SURCO')">SURCO</div>
+    <div class="com-pill" onclick="seleccionarComision('CHOSICA')">CHOSICA</div>
+    <div class="com-pill" onclick="seleccionarComision('CHACRASANA')">CHACRASANA</div>
+    <div class="com-pill" onclick="seleccionarComision('CHACLACAYO')">CHACLACAYO</div>
+    <div class="com-pill" onclick="seleccionarComision('LA ESTRELLA')">LA ESTRELLA</div>
+    <div class="com-pill" onclick="seleccionarComision('ÑAÑA')">ÑAÑA</div>
+    <div class="com-pill" onclick="seleccionarComision('CARAPONGO')">CARAPONGO</div>
+    <div class="com-pill" onclick="seleccionarComision('HUACHIPA')">HUACHIPA</div>
+    <div class="com-pill" onclick="seleccionarComision('NIEVERÍA')">NIEVERÍA</div>
+    <div class="com-pill" onclick="seleccionarComision('RICARDO PALMA')">RICARDO PALMA</div>
+    <div class="com-pill" onclick="seleccionarComision('PARCA')">PARCA</div>
+  </div>
+
+  <div class="com-table-wrap">
+    <table class="com-table" id="tablaComisiones">
+      <!-- Generado dinámicamente -->
+    </table>
+  </div>
+</div>
+
+<!-- MODAL AGREGAR EXPEDIENTE A CELDA -->
+<div id="modalAddExp" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);color:var(--text);border-radius:var(--radius);padding:18px;width:340px;box-shadow:0 8px 24px rgba(0,0,0,0.3)">
+    <h3 style="font-size:14px;margin-bottom:10px" id="addExpTitle">Agregar Expediente</h3>
+    <div style="margin-bottom:10px">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">N° Expediente:</label>
+      <input type="text" id="inputExpNumero" class="exp-input" placeholder="ej. 1386-2026" style="width:100%" oninput="validarExpedienteEnVivo()">
+      <div id="msgErrorDup" style="display:none;margin-top:6px;font-size:11px;color:#b91c1c;background:#fee2e2;border:1px solid #f87171;padding:6px 8px;border-radius:4px;line-height:1.4"></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Estado individual:</label>
+      <select id="selectExpEstado" class="exp-input" style="width:100%">
+        <option value="Sin atender">🔴 Sin atender</option>
+        <option value="En proceso">🟡 En proceso</option>
+        <option value="Atendido">🟢 Atendido</option>
+      </select>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarAddExpModal()" style="border:1px solid var(--border);color:var(--text)">Cancelar</button>
+      <button class="btn btn-navy btn-sm" id="btnGuardarAddExp" onclick="guardarAddExpModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVA FECHA -->
+<div id="modalNuevaFecha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);color:var(--text);border-radius:var(--radius);padding:18px;width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.3)">
+    <h3 style="font-size:14px;margin-bottom:10px">Agregar Nueva Fecha</h3>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Seleccione fecha:</label>
+      <input type="date" id="inputNuevaFechaVal" class="exp-input" style="width:100%">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarNuevaFechaModal()" style="border:1px solid var(--border);color:var(--text)">Cancelar</button>
+      <button class="btn btn-navy btn-sm" onclick="guardarNuevaFechaModal()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HISTOGRAMA -->
+<div id="modalHisto">
+  <div class="histo-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;flex-wrap:wrap;gap:8px">
+      <h3 style="font-size:16px">📊 Histograma de Expedientes</h3>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;font-weight:700">Filtro:</label>
+          <select id="histoRangoSelect" class="exp-input" style="font-size:12px;padding:4px 8px" onchange="cambiarTipoFiltroHistograma()">
+            <option value="mes_especifico" selected>📅 Por Mes Específico</option>
+            <option value="15d">⏱️ Últimos 15 días</option>
+            <option value="todo">📊 Todo el Historial</option>
+          </select>
+        </div>
+        <div id="wrapHistoMesPicker" style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;font-weight:700">Mes:</label>
+          <select id="histoMesSelect" class="exp-input" style="font-size:12px;padding:4px 8px" onchange="actualizarHistograma()">
+            <option value="2026-10">Octubre 2026</option>
+            <option value="2026-11" selected>Noviembre 2026</option>
+            <option value="2026-12">Diciembre 2026</option>
+            <option value="2027-01">Enero 2027</option>
+            <option value="2027-02">Febrero 2027</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="cerrarHistograma()" style="border:1px solid var(--border);color:var(--text)">✕ Cerrar</button>
+      </div>
+    </div>
+    <div style="position:relative;height:360px;width:100%">
+      <canvas id="histoChartCanvas"></canvas>
+    </div>
+    <div id="histoStats" style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;text-align:center">
+      <!-- Metricas -->
+    </div>
   </div>
 </div>
 
@@ -2678,7 +3307,1346 @@ async function initApp(){
     }).catch(function(){});
   },30000);
 }
+
+// ===================== MODULO CONTROL DE EXPEDIENTES =====================
+const EXP_PERSONAL = [
+  "Luis Zanabría Valderrama",
+  "Leonardo Sea Ordaya",
+  "Mac Aguirre Ilizarbe",
+  "Mary Castrillon",
+  "Genessis Lescano Figueroa",
+  "Steven Mamani Tito",
+  "Rosalía Gonzales Relaisa"
+];
+
+let expedientesData = {};
+let expChartInstance = null;
+let currentCellTarget = null; // { fecha, colIdx }
+
+
+function purgarFinesDeSemana() {
+  let changed = false;
+  Object.keys(expedientesData).forEach(f => {
+    if (esFinDeSemana(f)) {
+      delete expedientesData[f];
+      changed = true;
+    }
+  });
+  if (changed) saveExpedientesState();
+}
+
+function switchMainTab(tab) {
+  const calArea = document.querySelector('.main-area');
+  const expArea = document.getElementById('expedientesPanel');
+  const comArea = document.getElementById('comisionesPanel');
+  const btnCal = document.getElementById('btnTabCal');
+  const btnExp = document.getElementById('btnTabExp');
+  const btnCom = document.getElementById('btnTabCom');
+
+  calArea.style.display = 'none';
+  if (expArea) expArea.classList.remove('active-tab');
+  if (comArea) comArea.classList.remove('active-tab');
+
+  if (btnCal) btnCal.className = 'btn btn-ghost btn-sm main-tab-btn';
+  if (btnExp) btnExp.className = 'btn btn-ghost btn-sm main-tab-btn';
+  if (btnCom) btnCom.className = 'btn btn-ghost btn-sm main-tab-btn';
+
+  if (tab === 'exp') {
+    if (expArea) expArea.classList.add('active-tab');
+    if (btnExp) btnExp.className = 'btn btn-amber btn-sm main-tab-btn active';
+    renderTablaExpedientes();
+  } else if (tab === 'com') {
+    if (comArea) comArea.classList.add('active-tab');
+    if (btnCom) btnCom.className = 'btn btn-amber btn-sm main-tab-btn active';
+    renderComisionesUsuarios();
+  } else {
+    calArea.style.display = '';
+    if (btnCal) btnCal.className = 'btn btn-amber btn-sm main-tab-btn active';
+  }
+}
+
+// Carga de datos iniciales idénticos a la tabla proporcionada
+function getInitialExpedientesState() {
+  const initialDates = [
+  "2026-10-13",
+  "2026-10-14",
+  "2026-10-15",
+  "2026-10-16",
+  "2026-10-19",
+  "2026-10-20",
+  "2026-10-21",
+  "2026-10-22",
+  "2026-10-23",
+  "2026-10-26",
+  "2026-10-27",
+  "2026-10-28",
+  "2026-10-29",
+  "2026-10-30",
+  "2026-11-02",
+  "2026-11-03",
+  "2026-11-04",
+  "2026-11-05",
+  "2026-11-06",
+  "2026-11-09",
+  "2026-11-10",
+  "2026-11-11",
+  "2026-11-12",
+  "2026-11-13",
+  "2026-11-16",
+  "2026-11-17",
+  "2026-11-18",
+  "2026-11-19",
+  "2026-11-20",
+  "2026-11-23",
+  "2026-11-24",
+  "2026-11-25",
+  "2026-11-26",
+  "2026-11-27",
+  "2026-11-30",
+  "2026-12-01",
+  "2026-12-02",
+  "2026-12-03",
+  "2026-12-04",
+  "2026-12-07",
+  "2026-12-08",
+  "2026-12-09",
+  "2026-12-10",
+  "2026-12-11",
+  "2026-12-14",
+  "2026-12-15",
+  "2026-12-16",
+  "2026-12-17",
+  "2026-12-18",
+  "2026-12-21",
+  "2026-12-22",
+  "2026-12-23",
+  "2026-12-24",
+  "2026-12-25",
+  "2026-12-28",
+  "2026-12-29",
+  "2026-12-30",
+  "2026-12-31"
+];
+
+  const state = {};
+  initialDates.forEach(f => {
+    state[f] = {
+      cols: { "0": [], "1": [], "2": [], "3": [], "4": [], "5": [], "6": [] }
+    };
+  });
+
+  function add(f, col, num, st) {
+    if (!state[f]) {
+      state[f] = { cols: { "0": [], "1": [], "2": [], "3": [], "4": [], "5": [], "6": [] } };
+    }
+    if (!state[f].cols) state[f].cols = { "0": [], "1": [], "2": [], "3": [], "4": [], "5": [], "6": [] };
+    if (!state[f].cols[col]) state[f].cols[col] = [];
+    state[f].cols[col].push({ exp: num, estado: st || "Sin atender" });
+  }
+
+  add("2026-10-15", 0, "1374-2026");
+  add("2026-10-16", 1, "1373-2026");
+  add("2026-10-16", 2, "1386-2026");
+  add("2026-10-16", 2, "1389-2026");
+  add("2026-10-16", 2, "1388-2026");
+  add("2026-10-16", 2, "1385-2026");
+
+  add("2026-10-19", 0, "1085-2026");
+  add("2026-10-19", 0, "1395-2026");
+  add("2026-10-19", 1, "1393-2026");
+  add("2026-10-19", 1, "1387-2026");
+  add("2026-10-19", 2, "1390-2026");
+  add("2026-10-19", 2, "1399-2026");
+  add("2026-10-19", 2, "1216-2026");
+  add("2026-10-19", 4, "1392-2026");
+  add("2026-10-19", 4, "1401-2026");
+
+  add("2026-10-23", 0, "1227-2026");
+  add("2026-10-23", 1, "979-2025");
+  add("2026-10-23", 4, "1406-2026");
+  add("2026-10-23", 6, "458-2026");
+
+  add("2026-10-26", 0, "1405-2026");
+
+  add("2026-10-27", 0, "1429-2026");
+  add("2026-10-27", 0, "717-2026");
+
+  add("2026-10-28", 5, "1420-2026");
+  add("2026-10-28", 5, "1422-2026");
+  add("2026-10-28", 5, "1419-2026");
+
+  add("2026-10-29", 1, "780-2026");
+  add("2026-10-29", 4, "1425-2026");
+
+  add("2026-11-02", 0, "1433-2026");
+  add("2026-11-02", 1, "1449-2026");
+  add("2026-11-02", 2, "1450-2026");
+  add("2026-11-02", 2, "1184-2026");
+
+  add("2026-11-03", 0, "812-2026");
+  add("2026-11-03", 2, "1448-2026");
+  add("2026-11-03", 5, "1440-2026");
+
+  add("2026-11-04", 0, "1457-2026");
+  add("2026-11-04", 2, "1452-2026");
+  add("2026-11-04", 2, "1451-2026");
+  add("2026-11-04", 5, "1446-2026");
+  add("2026-11-04", 5, "1430-2026");
+
+  add("2026-11-05", 1, "848-2026");
+
+  add("2026-11-09", 0, "1461-2026");
+  add("2026-11-09", 0, "1473-2026");
+  add("2026-11-09", 0, "1466-2026");
+  add("2026-11-09", 1, "1460-2026");
+  add("2026-11-09", 1, "1480-2026");
+  add("2026-11-09", 1, "1447-2026");
+  add("2026-11-09", 1, "1469-2026");
+  add("2026-11-09", 1, "1458-2026");
+  add("2026-11-09", 2, "1235-2026");
+  add("2026-11-09", 2, "1472-2026");
+  add("2026-11-09", 2, "1467-2026");
+  add("2026-11-09", 4, "1474-2026");
+  add("2026-11-09", 6, "1470-2026");
+
+  return state;
+}
+
+function normalizeExpedientesData(raw) {
+  const base = getInitialExpedientesState();
+  if (!raw || typeof raw !== 'object') return base;
+
+  // Unir los datos existentes con las fechas base completas
+  const merged = { ...base };
+  Object.keys(raw).forEach(fecha => {
+    if (esFinDeSemana(fecha)) return;
+    const row = raw[fecha] || {};
+    const colsObj = { "0":[], "1":[], "2":[], "3":[], "4":[], "5":[], "6":[] };
+    if (row.cols) {
+      for (let c = 0; c < 7; c++) {
+        const list = row.cols[c] || [];
+        if (Array.isArray(list)) {
+          colsObj[c] = list.filter(item => item !== null && item !== undefined).map(item => {
+            if (typeof item === 'string') return { exp: item, estado: 'Sin atender' };
+            return { exp: item.exp || '', estado: item.estado || 'Sin atender' };
+          });
+        }
+      }
+    }
+    merged[fecha] = { cols: colsObj };
+  });
+  return merged;
+}
+
+async function loadExpedientesFromFirebase() {
+  try {
+    const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
+    if (fireDb) {
+      const snap = await fireDb.ref('expedientes').once('value');
+      const val = snap.val();
+      if (val && Object.keys(val).length > 0) {
+        expedientesData = normalizeExpedientesData(val);
+      } else {
+        expedientesData = getInitialExpedientesState();
+        await fireDb.ref('expedientes').set(expedientesData);
+      }
+    } else {
+      const local = localStorage.getItem('expedientes_data_copia');
+      expedientesData = local ? normalizeExpedientesData(JSON.parse(local)) : getInitialExpedientesState();
+    }
+  } catch (e) {
+    console.error('Error cargando expedientes:', e);
+    expedientesData = getInitialExpedientesState();
+  }
+
+  // Listener en tiempo real sin sobrescribir mientras se edita
+  const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
+  if (fireDb) {
+    fireDb.ref('expedientes').on('value', snap => {
+      const v = snap.val();
+      if (v) {
+        expedientesData = normalizeExpedientesData(v);
+        renderTablaExpedientes();
+      }
+    });
+  }
+}
+
+async function saveExpedientesState() {
+  try {
+    localStorage.setItem('expedientes_data_copia', JSON.stringify(expedientesData));
+    const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
+    if (fireDb) {
+      await fireDb.ref('expedientes').set(expedientesData);
+      console.log('✅ Expedientes guardados en Firebase con éxito.');
+    }
+  } catch (e) {
+    console.error('Error guardando expedientes:', e);
+    showToast('⚠️ Error al sincronizar con Firebase: ' + (e.message || e));
+  }
+}
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+function parseFechaLocal(yyyyMmDd) {
+  const parts = yyyyMmDd.split('-').map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); // Al mediodía evita desfases de huso horario
+}
+
+function formatFechaDisplay(yyyyMmDd) {
+  if (!yyyyMmDd || !yyyyMmDd.includes('-')) return yyyyMmDd;
+  const dt = parseFechaLocal(yyyyMmDd);
+  const diaNombre = DIAS_SEMANA[dt.getDay()];
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  return `${diaNombre} ${d}/${m}/${y}`;
+}
+
+function esFinDeSemana(yyyyMmDd) {
+  if (!yyyyMmDd || !yyyyMmDd.includes('-')) return false;
+  const dt = parseFechaLocal(yyyyMmDd);
+  const day = dt.getDay();
+  return day === 0 || day === 6; // Domingo=0, Sábado=6
+}
+
+function renderTheadExpedientes(fPer) {
+  const thead = document.getElementById('theadExpedientes');
+  if (!thead) return;
+
+  let thCols = '';
+  if (fPer !== '') {
+    const colIdx = parseInt(fPer);
+    thCols = `<th style="background:#1d4ed8;font-size:14px;padding:10px">${EXP_PERSONAL[colIdx]} (Vista Filtrada)</th>`;
+  } else {
+    thCols = EXP_PERSONAL.map(p => `<th>${p}</th>`).join('');
+  }
+
+  thead.innerHTML = `<tr>
+    <th style="width:170px">Fecha (Día)</th>
+    ${thCols}
+    <th style="width:50px">🗑️</th>
+  </tr>`;
+}
+
+function renderTablaExpedientes() {
+  const tbody = document.getElementById('tbodyExpedientes');
+  if (!tbody) return;
+
+  const fNum = (document.getElementById('filtroExpNum')?.value || '').trim().toLowerCase();
+  const fEst = document.getElementById('filtroExpEstado')?.value || '';
+  const fPer = document.getElementById('filtroExpPersona')?.value || '';
+
+  renderTheadExpedientes(fPer);
+
+  // Asegurar lista continua de TODOS los días hábiles de lunes a viernes
+  const todasLasFechasSet = new Set(Object.keys(expedientesData));
+  
+  // Rango continuo de TODOS los días hábiles del año
+  let dCursor = new Date(2026, 9, 1, 12, 0, 0); // Desde inicio de Octubre 2026
+  let dMax = new Date(2027, 11, 31, 12, 0, 0); // Todo 2026 y 2027 completo continuo
+
+  while (dCursor <= dMax) {
+    const day = dCursor.getDay();
+    if (day !== 0 && day !== 6) { // Lunes a Viernes
+      const yStr = dCursor.getFullYear();
+      const mStr = String(dCursor.getMonth() + 1).padStart(2, '0');
+      const dStr = String(dCursor.getDate()).padStart(2, '0');
+      todasLasFechasSet.add(`${yStr}-${mStr}-${dStr}`);
+    }
+    dCursor.setDate(dCursor.getDate() + 1);
+  }
+
+  const fechas = Array.from(todasLasFechasSet).sort();
+
+  let html = '';
+  let filasMostradas = 0;
+
+  fechas.forEach(fecha => {
+    // Excluir fines de semana
+    if (esFinDeSemana(fecha)) return;
+
+    const row = expedientesData[fecha] || { estado: 'Sin atender', cols: {} };
+    const cols = row.cols || {};
+
+    // 1. Filtro por Persona: si está activo, verificar si esa persona tiene expedientes
+    let visibleCols = [0, 1, 2, 3, 4, 5, 6];
+    if (fPer !== '') {
+      visibleCols = [parseInt(fPer)];
+      const list = cols[fPer] || [];
+      if (list.length === 0 && !fNum) {
+        // Si se filtra por persona y no tiene nada asignado ese día, no mostrar la fila (salvo que no haya filtro de fecha)
+        // Permitimos ver la fila si se desactiva fNum para poder agregarle
+      }
+    }
+
+    // 2. Filtro por Estado de Expediente
+    if (fEst) {
+      let tieneEstado = false;
+      visibleCols.forEach(c => {
+        const list = cols[c] || [];
+        list.forEach(item => {
+          const st = typeof item === 'object' ? (item.estado || 'Sin atender') : 'Sin atender';
+          if (st === fEst) tieneEstado = true;
+        });
+      });
+      if (!tieneEstado) return;
+    }
+
+    // 3. Filtro por Número de Expediente
+    if (fNum) {
+      let tieneCoincidencia = false;
+      visibleCols.forEach(c => {
+        const list = cols[c] || [];
+        list.forEach(item => {
+          const expNum = (typeof item === 'object' ? item.exp : item).toLowerCase();
+          if (expNum.includes(fNum)) tieneCoincidencia = true;
+        });
+      });
+      if (!tieneCoincidencia) return;
+    }
+
+    filasMostradas++;
+
+    let stClass = 'status-sin';
+    if (row.estado === 'En proceso') stClass = 'status-proc';
+    if (row.estado === 'Atendido') stClass = 'status-aten';
+
+    html += `<tr data-fecha="${fecha}">
+      <td class="col-fecha">${formatFechaDisplay(fecha)}</td>`;
+
+    // Renderizar únicamente las columnas visibles (una sola si hay filtro de personal)
+    visibleCols.forEach(c => {
+      const rawList = cols[c] || [];
+
+      // Si hay filtro por número, en la celda mostramos únicamente el expediente coincidente
+      let displayList = rawList;
+      if (fNum) {
+        displayList = rawList.filter(item => {
+          const expNum = (typeof item === 'object' ? item.exp : item).toLowerCase();
+          return expNum.includes(fNum);
+        });
+      }
+
+      html += `<td>
+        <div class="exp-cell-area">`;
+
+      displayList.forEach((item) => {
+        // Encontrar índice real para edición
+        const realIdx = rawList.indexOf(item);
+        const expNum = typeof item === 'object' ? item.exp : item;
+        const expSt = typeof item === 'object' ? (item.estado || 'Sin atender') : 'Sin atender';
+        let bClass = 'exp-badge-sin';
+        if (expSt === 'En proceso') bClass = 'exp-badge-proc';
+        if (expSt === 'Atendido') bClass = 'exp-badge-aten';
+
+        html += `<div class="exp-badge-item ${bClass}">
+          <span style="font-size:13.5px;letter-spacing:0.3px">${expNum}</span>
+          <select class="exp-badge-select" onchange="cambiarEstadoExpediente('${fecha}', ${c}, ${realIdx}, this.value)">
+            <option value="Sin atender" ${expSt === 'Sin atender' ? 'selected' : ''}>🔴 Sin atender</option>
+            <option value="En proceso" ${expSt === 'En proceso' ? 'selected' : ''}>🟡 En proceso</option>
+            <option value="Atendido" ${expSt === 'Atendido' ? 'selected' : ''}>🟢 Atendido</option>
+          </select>
+          <span class="badge-del" onclick="eliminarExpediente('${fecha}', ${c}, ${realIdx})" title="Eliminar expediente">✕</span>
+        </div>`;
+      });
+
+      html += `<button class="exp-quick-add" onclick="abrirAddExpModal('${fecha}', ${c})">+ Exp</button>
+        </div>
+      </td>`;
+    });
+
+    html += `<td style="text-align:center">
+      <button class="btn btn-ghost btn-sm" style="color:#ef4444;padding:2px 5px" onclick="eliminarFilaFecha('${fecha}')" title="Eliminar fecha">🗑️</button>
+    </td>
+    </tr>`;
+  });
+
+  if (html === '' || filasMostradas === 0) {
+    const totalCols = (fPer !== '' ? 1 : 7) + 3;
+    html = `<tr><td colspan="${totalCols}" style="text-align:center;padding:24px;color:var(--muted)">
+      🔍 No se encontraron expedientes con los criterios seleccionados.
+    </td></tr>`;
+  }
+
+  tbody.innerHTML = html;
+}
+
+
+function abrirAddExpModal(fecha, colIdx) {
+  currentCellTarget = { fecha, colIdx };
+  document.getElementById('addExpTitle').textContent = `Agregar a ${EXP_PERSONAL[colIdx]} (${formatFechaDisplay(fecha)})`;
+  document.getElementById('inputExpNumero').value = '';
+  document.getElementById('selectExpEstado').value = 'Sin atender';
+  document.getElementById('modalAddExp').style.display = 'flex';
+  setTimeout(() => document.getElementById('inputExpNumero').focus(), 50);
+}
+
+function cerrarAddExpModal() {
+  document.getElementById('modalAddExp').style.display = 'none';
+  currentCellTarget = null;
+}
+
+// Buscar si un expediente ya existe asignado en el sistema
+// Función estricta para normalizar número de expediente (ignora espacios, guiones, barras, mayúsculas)
+function normalizarExp(txt) {
+  if (!txt) return '';
+  return String(txt).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// Buscar si un expediente ya existe registrado en cualquier persona o fecha
+function buscarExpedienteDuplicado(numExp) {
+  const normTarget = normalizarExp(numExp);
+  if (!normTarget) return null;
+
+  const fechas = Object.keys(expedientesData);
+  for (let i = 0; i < fechas.length; i++) {
+    const f = fechas[i];
+    const r = expedientesData[f] || {};
+    const cols = r.cols || {};
+
+    for (let c = 0; c < 7; c++) {
+      const list = cols[c] || [];
+      for (let k = 0; k < list.length; k++) {
+        const item = list[k];
+        if (!item) continue;
+        const rawNum = typeof item === 'object' ? item.exp : item;
+        const normExistente = normalizarExp(rawNum);
+
+        // Comparación estricta alfanumérica
+        if (normExistente && normExistente === normTarget) {
+          return {
+            expRegistrado: rawNum,
+            fecha: f,
+            col: c,
+            persona: EXP_PERSONAL[c] || 'Desconocido'
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Validación en tiempo real mientras el usuario escribe en el modal
+function validarExpedienteEnVivo() {
+  const input = document.getElementById('inputExpNumero');
+  const msg = document.getElementById('msgErrorDup');
+  const btnGuardar = document.getElementById('btnGuardarAddExp');
+  if (!input) return;
+
+  const num = input.value.trim();
+  const dup = buscarExpedienteDuplicado(num);
+
+  if (dup) {
+    if (msg) {
+      msg.style.display = 'block';
+      msg.innerHTML = `⚠️ <b>Expediente Ya Registrado:</b><br>Asignado a <b>${dup.persona}</b> en fecha <b>${formatFechaDisplay(dup.fecha)}</b>.<br>❌ <i>No se permite guardar expedientes replicados.</i>`;
+    }
+    input.style.borderColor = '#dc2626';
+    input.style.backgroundColor = '#fef2f2';
+    if (btnGuardar) {
+      btnGuardar.disabled = true;
+      btnGuardar.style.opacity = '0.5';
+      btnGuardar.style.cursor = 'not-allowed';
+    }
+    return true; // Es duplicado
+  } else {
+    if (msg) msg.style.display = 'none';
+    input.style.borderColor = '';
+    input.style.backgroundColor = '';
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+      btnGuardar.style.opacity = '1';
+      btnGuardar.style.cursor = 'pointer';
+    }
+    return false;
+  }
+}
+
+async function guardarAddExpModal() {
+  if (!currentCellTarget) return;
+  const input = document.getElementById('inputExpNumero');
+  const num = input.value.trim();
+  const st = document.getElementById('selectExpEstado').value;
+
+  if (!num) {
+    showToast('⚠️ Escriba el número de expediente');
+    input.focus();
+    return;
+  }
+
+  // 1. Verificación estricta anti-duplicados
+  const dup = buscarExpedienteDuplicado(num);
+  if (dup) {
+    validarExpedienteEnVivo();
+    alert(`⛔ ACCIÓN DENEGADA:\n\nEl expediente "${num}" ya existe en el sistema.\n\nAsignado a: ${dup.persona}\nFecha: ${formatFechaDisplay(dup.fecha)}\n\nNo se permite guardar expedientes replicados.`);
+    input.focus();
+    return; // BLOQUEO TOTAL: no guarda
+  }
+
+  const { fecha, colIdx } = currentCellTarget;
+
+  if (!expedientesData[fecha]) {
+    expedientesData[fecha] = { cols: { "0":[], "1":[], "2":[], "3":[], "4":[], "5":[], "6":[] } };
+  }
+  if (!expedientesData[fecha].cols) expedientesData[fecha].cols = {};
+  if (!expedientesData[fecha].cols[colIdx]) expedientesData[fecha].cols[colIdx] = [];
+
+  // 2. Guardar únicamente si es único
+  expedientesData[fecha].cols[colIdx].push({ exp: num, estado: st });
+  await saveExpedientesState();
+  cerrarAddExpModal();
+  renderTablaExpedientes();
+  showToast('✅ Expediente guardado exitosamente');
+}
+
+async function eliminarExpediente(fecha, colIdx, idx) {
+  if (!confirm('¿Eliminar este expediente?')) return;
+  if (expedientesData[fecha]?.cols?.[colIdx]) {
+    expedientesData[fecha].cols[colIdx].splice(idx, 1);
+    await saveExpedientesState();
+    renderTablaExpedientes();
+    showToast('🗑️ Expediente eliminado');
+  }
+}
+
+async function cambiarEstadoExpediente(fecha, colIdx, idx, nuevoEstado) {
+  if (!expedientesData[fecha]?.cols?.[colIdx]?.[idx]) return;
+  if (typeof expedientesData[fecha].cols[colIdx][idx] === 'string') {
+    expedientesData[fecha].cols[colIdx][idx] = { exp: expedientesData[fecha].cols[colIdx][idx], estado: nuevoEstado };
+  } else {
+    expedientesData[fecha].cols[colIdx][idx].estado = nuevoEstado;
+  }
+  await saveExpedientesState();
+  renderTablaExpedientes();
+  showToast('✅ Estado de expediente actualizado');
+}
+
+function abrirAgregarFilaModal() {
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('inputNuevaFechaVal').value = hoy;
+  document.getElementById('modalNuevaFecha').style.display = 'flex';
+}
+
+function cerrarNuevaFechaModal() {
+  document.getElementById('modalNuevaFecha').style.display = 'none';
+}
+
+async function guardarNuevaFechaModal() {
+  const f = document.getElementById('inputNuevaFechaVal').value;
+  if (!f) return;
+  if (esFinDeSemana(f)) {
+    showToast('⚠️ Solo se admiten días de Lunes a Viernes');
+    return;
+  }
+  if (expedientesData[f]) {
+    showToast('⚠️ Esa fecha ya existe en la tabla');
+    return;
+  }
+  expedientesData[f] = {
+    cols: { "0":[], "1":[], "2":[], "3":[], "4":[], "5":[], "6":[] }
+  };
+  await saveExpedientesState();
+  cerrarNuevaFechaModal();
+  renderTablaExpedientes();
+  showToast('✅ Fecha ' + formatFechaDisplay(f) + ' agregada');
+}
+
+function agregarProximaSemana() {
+  const fechas = Object.keys(expedientesData).sort();
+  let ultima = fechas.length > 0 ? new Date(fechas[fechas.length - 1] + 'T00:00:00') : new Date();
+  let agregadas = 0;
+  let cursor = new Date(ultima);
+
+  while (agregadas < 5) {
+    cursor.setDate(cursor.getDate() + 1);
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) { // Lunes a Viernes
+      const iso = cursor.toISOString().split('T')[0];
+      if (!expedientesData[iso]) {
+        expedientesData[iso] = {
+          cols: { "0":[], "1":[], "2":[], "3":[], "4":[], "5":[], "6":[] }
+        };
+        agregadas++;
+      }
+    }
+  }
+  saveExpedientesState();
+  renderTablaExpedientes();
+  showToast('✅ Agregados 5 días hábiles siguientes');
+}
+
+async function eliminarFilaFecha(fecha) {
+  if (!confirm(`¿Eliminar la fila completa del ${formatFechaDisplay(fecha)}?`)) return;
+  delete expedientesData[fecha];
+  await saveExpedientesState();
+  renderTablaExpedientes();
+  showToast('🗑️ Fila eliminada');
+}
+
+function filtrarExpedientes() {
+  renderTablaExpedientes();
+}
+
+function limpiarFiltrosExp() {
+  document.getElementById('filtroExpNum').value = '';
+  document.getElementById('filtroExpEstado').value = '';
+  document.getElementById('filtroExpPersona').value = '';
+  renderTablaExpedientes();
+}
+
+function exportarExpedientesExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Biblioteca Excel cargándose, reintente en un momento');
+    return;
+  }
+
+  const fPer = document.getElementById('filtroExpPersona')?.value || '';
+  const personalExport = fPer !== '' ? [EXP_PERSONAL[parseInt(fPer)]] : EXP_PERSONAL;
+  const colIndices = fPer !== '' ? [parseInt(fPer)] : [0, 1, 2, 3, 4, 5, 6];
+
+  const rows = [
+    ["Fecha", ...personalExport]
+  ];
+
+  const fechas = Object.keys(expedientesData).sort();
+  fechas.forEach(f => {
+    if (esFinDeSemana(f)) return;
+    const r = expedientesData[f] || {};
+    const cols = r.cols || {};
+
+    // Obtener las listas de expedientes para cada columna en esta fecha
+    const colsLists = colIndices.map(c => cols[c] || []);
+
+    // Determinar cuántas filas se necesitan para esta fecha (tantas como el máximo de expedientes en una columna)
+    let maxItems = 1;
+    colsLists.forEach(list => {
+      if (list.length > maxItems) maxItems = list.length;
+    });
+
+    // Crear una fila por cada expediente en lugar de concatenar
+    for (let k = 0; k < maxItems; k++) {
+      const row = [];
+      // La primera fila lleva la fecha; las filas siguientes del mismo día llevan la fecha o en blanco
+      row.push(k === 0 ? formatFechaDisplay(f) : formatFechaDisplay(f) + ' (cont.)');
+
+      colsLists.forEach(list => {
+        const it = list[k];
+        if (it) {
+          const num = typeof it === 'object' ? it.exp : it;
+          const st = typeof it === 'object' ? (it.estado || 'Sin atender') : 'Sin atender';
+          row.push(`${num} [${st}]`);
+        } else {
+          row.push(''); // Celda vacía independiente
+        }
+      });
+
+      rows.push(row);
+    }
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Auto-ajustar anchos de columnas en Excel
+  ws['!cols'] = [
+    { wch: 22 }, // Fecha
+    ...colIndices.map(() => ({ wch: 26 })) // Columnas de personal
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Expedientes");
+  XLSX.writeFile(wb, "Control_Expedientes_JUSHMRCB.xlsx");
+}
+
+function imprimirExpedientesPDF() {
+  window.print();
+}
+
+function cambiarTipoFiltroHistograma() {
+  const tipo = document.getElementById('histoRangoSelect')?.value;
+  const wrap = document.getElementById('wrapHistoMesPicker');
+  if (wrap) {
+    wrap.style.display = (tipo === 'mes_especifico') ? 'flex' : 'none';
+  }
+  actualizarHistograma();
+}
+
+function abrirHistograma() {
+  document.getElementById('modalHisto').classList.add('open');
+  // Asegurar que las opciones de meses incluyan todos los meses presentes en los datos
+  poblarSelectMesesHistograma();
+  actualizarHistograma();
+}
+
+function poblarSelectMesesHistograma() {
+  const sel = document.getElementById('histoMesSelect');
+  if (!sel) return;
+
+  const mesesSet = new Set();
+  Object.keys(expedientesData).forEach(f => {
+    if (f.length >= 7) mesesSet.add(f.substring(0, 7));
+  });
+
+  const mesesArray = Array.from(mesesSet).sort();
+  const nombresMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  let html = '';
+  const mesActual = new Date().toISOString().substring(0, 7);
+  let seleccionado = sel.value || (mesesArray.includes(mesActual) ? mesActual : mesesArray[mesesArray.length - 1]);
+
+  mesesArray.forEach(m => {
+    const [y, mm] = m.split('-').map(Number);
+    const nom = `${nombresMes[mm - 1]} ${y}`;
+    html += `<option value="${m}" ${m === seleccionado ? 'selected' : ''}>${nom}</option>`;
+  });
+
+  if (html) sel.innerHTML = html;
+}
+
+function actualizarHistograma() {
+  const tipo = document.getElementById('histoRangoSelect')?.value || 'mes_especifico';
+  const mesElegido = document.getElementById('histoMesSelect')?.value || '2026-11';
+  const wrap = document.getElementById('wrapHistoMesPicker');
+  if (wrap) wrap.style.display = (tipo === 'mes_especifico') ? 'flex' : 'none';
+
+  const fechasTodas = Object.keys(expedientesData).sort();
+
+  const sinAtenderCounts = [0, 0, 0, 0, 0, 0, 0];
+  const enProcesoCounts = [0, 0, 0, 0, 0, 0, 0];
+  const atendidoCounts = [0, 0, 0, 0, 0, 0, 0];
+
+  let totalGeneral = 0;
+  let totalSin = 0;
+  let totalProc = 0;
+  let totalAten = 0;
+
+  // Filtro de rango de fecha
+  let labelPeriodo = '';
+  if (tipo === 'mes_especifico') {
+    const [y, mm] = mesElegido.split('-').map(Number);
+    const nombresMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"];
+    labelPeriodo = `Mes de ${nombresMes[mm - 1]} ${y}`;
+  } else if (tipo === '15d') {
+    labelPeriodo = 'Últimos 15 Días';
+  } else {
+    labelPeriodo = 'Histórico Total';
+  }
+
+  const hoy = new Date();
+  const d15 = new Date();
+  d15.setDate(d15.getDate() - 15);
+  const d15Str = d15.toISOString().split('T')[0];
+
+  fechasTodas.forEach(f => {
+    if (esFinDeSemana(f)) return;
+
+    // Validación según filtro
+    if (tipo === 'mes_especifico' && !f.startsWith(mesElegido)) return;
+    if (tipo === '15d' && f < d15Str) return;
+
+    const r = expedientesData[f] || {};
+    const cols = r.cols || {};
+
+    for (let c = 0; c < 7; c++) {
+      const list = cols[c] || [];
+      list.forEach(item => {
+        if (!item) return;
+        totalGeneral++;
+        const st = typeof item === 'object' ? (item.estado || 'Sin atender') : 'Sin atender';
+        if (st === 'Sin atender') { sinAtenderCounts[c]++; totalSin++; }
+        else if (st === 'En proceso') { enProcesoCounts[c]++; totalProc++; }
+        else if (st === 'Atendido') { atendidoCounts[c]++; totalAten++; }
+      });
+    }
+  });
+
+  const ctx = document.getElementById('histoChartCanvas').getContext('2d');
+  if (expChartInstance) expChartInstance.destroy();
+
+  const isDark = document.body.classList.contains('dark');
+  const textColor = isDark ? '#e2e8f0' : '#1e293b';
+
+  expChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: EXP_PERSONAL.map(p => {
+        const parts = p.split(' ');
+        return parts[0] + ' ' + (parts[1] || '');
+      }),
+      datasets: [
+        { label: '🔴 Sin atender', data: sinAtenderCounts, backgroundColor: '#ef4444' },
+        { label: '🟡 En proceso', data: enProcesoCounts, backgroundColor: '#facc15' },
+        { label: '🟢 Atendido', data: atendidoCounts, backgroundColor: '#22c55e' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, ticks: { color: textColor, font: { weight: 'bold', size: 11 } } },
+        y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, color: textColor, font: { weight: 'bold' } } }
+      },
+      plugins: {
+        legend: { labels: { color: textColor, font: { size: 12, weight: 'bold' } } },
+        title: {
+          display: true,
+          text: `Distribución de Expedientes por Responsable - ${labelPeriodo}`,
+          color: textColor,
+          font: { size: 14, weight: 'bold' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('histoStats').innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px">
+      <div style="font-size:20px;font-weight:700">${totalGeneral}</div>
+      <div style="font-size:11.5px;color:var(--muted)">Expedientes (${labelPeriodo})</div>
+    </div>
+    <div style="background:#fee2e2;border:1px solid #f87171;border-radius:6px;padding:8px;color:#991b1b">
+      <div style="font-size:20px;font-weight:700">${totalSin}</div>
+      <div style="font-size:11.5px;font-weight:600">Sin atender</div>
+    </div>
+    <div style="background:#fef9c3;border:1px solid #facc15;border-radius:6px;padding:8px;color:#854d0e">
+      <div style="font-size:20px;font-weight:700">${totalProc}</div>
+      <div style="font-size:11.5px;font-weight:600">En proceso</div>
+    </div>
+    <div style="background:#dcfce7;border:1px solid #4ade80;border-radius:6px;padding:8px;color:#166534">
+      <div style="font-size:20px;font-weight:700">${totalAten}</div>
+      <div style="font-size:11.5px;font-weight:600">Atendidos</div>
+    </div>
+  `;
+}
+
+function cerrarHistograma() {
+  document.getElementById('modalHisto').classList.remove('open');
+}
+
 initApp();
+
+// ===================== COMISIONES DE USUARIOS (JUSHMRCB) =====================
+const COMISIONES_LIST = [
+  'ATE',
+  'SURCO',
+  'CHOSICA',
+  'CHACRASANA',
+  'CHACLACAYO',
+  'LA ESTRELLA',
+  'ÑAÑA',
+  'CARAPONGO',
+  'HUACHIPA',
+  'NIEVERÍA',
+  'RICARDO PALMA',
+  'PARCA'
+];
+
+let comisionesData = {};
+let comisionSeleccionada = 'TODAS';
+let comisionDebounceTimer = null;
+
+function getInitialComisionesState() {
+  const state = {};
+  COMISIONES_LIST.forEach(com => {
+    state[com] = [
+      { id: 'c_' + com + '_1', inicio: '', fin: '', canal: '', descripcion: '' },
+      { id: 'c_' + com + '_2', inicio: '', fin: '', canal: '', descripcion: '' },
+      { id: 'c_' + com + '_3', inicio: '', fin: '', canal: '', descripcion: '' }
+    ];
+  });
+  return state;
+}
+
+function normalizeComisionesData(val) {
+  if (!val || typeof val !== 'object') return getInitialComisionesState();
+  const res = {};
+  COMISIONES_LIST.forEach(com => {
+    let arr = [];
+    if (Array.isArray(val[com])) {
+      arr = val[com];
+    } else if (val[com] && typeof val[com] === 'object') {
+      arr = Object.values(val[com]);
+    }
+    res[com] = arr.map((item, idx) => ({
+      id: item && item.id ? item.id : ('c_' + com + '_' + (idx + 1)),
+      inicio: (item && item.inicio) || '',
+      fin: (item && item.fin) || '',
+      canal: (item && item.canal) || '',
+      descripcion: (item && item.descripcion) || ''
+    }));
+    if (res[com].length === 0) {
+      res[com] = [
+        { id: 'c_' + com + '_1', inicio: '', fin: '', canal: '', descripcion: '' },
+        { id: 'c_' + com + '_2', inicio: '', fin: '', canal: '', descripcion: '' },
+        { id: 'c_' + com + '_3', inicio: '', fin: '', canal: '', descripcion: '' }
+      ];
+    }
+  });
+  return res;
+}
+
+async function loadComisionesFromFirebase() {
+  try {
+    const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
+    if (fireDb) {
+      const snap = await fireDb.ref('comisiones_usuarios').once('value');
+      const val = snap.val();
+      if (val && Object.keys(val).length > 0) {
+        comisionesData = normalizeComisionesData(val);
+      } else {
+        comisionesData = getInitialComisionesState();
+        await fireDb.ref('comisiones_usuarios').set(comisionesData);
+      }
+    } else {
+      const local = localStorage.getItem('comisiones_usuarios_data');
+      comisionesData = local ? normalizeComisionesData(JSON.parse(local)) : getInitialComisionesState();
+    }
+  } catch (e) {
+    console.error('Error cargando comisiones:', e);
+    comisionesData = getInitialComisionesState();
+  }
+
+  // Listener en tiempo real entre PCs
+  const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
+  if (fireDb) {
+    fireDb.ref('comisiones_usuarios').on('value', snap => {
+      const v = snap.val();
+      if (v) {
+        comisionesData = normalizeComisionesData(v);
+        const panel = document.getElementById('comisionesPanel');
+        if (panel && panel.classList.contains('active-tab')) {
+          const focused = document.activeElement;
+          const isEditing = focused && focused.closest && focused.closest('#tablaComisiones');
+          if (!isEditing) {
+            renderComisionesUsuarios();
+          }
+        }
+      }
+    });
+  }
+}
+
+async function saveComisionesToFirebase() {
+  try {
+    localStorage.setItem('comisiones_usuarios_data', JSON.stringify(comisionesData));
+    const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
+    if (fireDb) {
+      await fireDb.ref('comisiones_usuarios').set(comisionesData);
+    }
+    const st = document.getElementById('comSaveStatus');
+    if (st) {
+      st.style.display = 'inline';
+      st.textContent = '💾 Guardado';
+      st.style.color = '#10b981';
+      setTimeout(() => { if (st) st.style.display = 'none'; }, 2000);
+    }
+  } catch (e) {
+    console.error('Error guardando comisiones en Firebase:', e);
+    const st = document.getElementById('comSaveStatus');
+    if (st) {
+      st.style.display = 'inline';
+      st.textContent = '⚠️ Error al guardar';
+      st.style.color = '#dc2626';
+    }
+  }
+}
+
+function scheduleSaveComisiones() {
+  const st = document.getElementById('comSaveStatus');
+  if (st) {
+    st.style.display = 'inline';
+    st.textContent = '⏳ Guardando...';
+    st.style.color = 'var(--amber)';
+  }
+  clearTimeout(comisionDebounceTimer);
+  comisionDebounceTimer = setTimeout(() => {
+    saveComisionesToFirebase();
+  }, 400);
+}
+
+function escapeComAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function seleccionarComision(com) {
+  comisionSeleccionada = com;
+  const select = document.getElementById('filtroComSelect');
+  if (select) select.value = com;
+  const pills = document.querySelectorAll('.com-pill');
+  pills.forEach(p => {
+    const txt = p.textContent.replace('🏢 ', '').trim();
+    if (com === 'TODAS' && txt === 'Todas') {
+      p.classList.add('active');
+    } else if (txt === com) {
+      p.classList.add('active');
+    } else {
+      p.classList.remove('active');
+    }
+  });
+  renderComisionesUsuarios();
+}
+
+function filtrarComisiones() {
+  renderComisionesUsuarios();
+}
+
+function updateComisionField(comision, index, field, value) {
+  if (!comisionesData[comision]) comisionesData[comision] = [];
+  while (comisionesData[comision].length <= index) {
+    comisionesData[comision].push({
+      id: 'c_' + comision + '_' + (comisionesData[comision].length + 1),
+      inicio: '',
+      fin: '',
+      canal: '',
+      descripcion: ''
+    });
+  }
+  comisionesData[comision][index][field] = value;
+  scheduleSaveComisiones();
+}
+
+function agregarFilaComision(comision) {
+  if (!comisionesData[comision]) comisionesData[comision] = [];
+  comisionesData[comision].push({
+    id: 'c_' + comision + '_' + Date.now(),
+    inicio: '',
+    fin: '',
+    canal: '',
+    descripcion: ''
+  });
+  scheduleSaveComisiones();
+  renderComisionesUsuarios();
+}
+
+function eliminarFilaComision(comision, index) {
+  if (!comisionesData[comision] || !comisionesData[comision][index]) return;
+  if (confirm('¿Eliminar esta fila de la comisión ' + comision + '?')) {
+    comisionesData[comision].splice(index, 1);
+    if (comisionesData[comision].length === 0) {
+      comisionesData[comision].push({
+        id: 'c_' + comision + '_' + Date.now(),
+        inicio: '',
+        fin: '',
+        canal: '',
+        descripcion: ''
+      });
+    }
+    scheduleSaveComisiones();
+    renderComisionesUsuarios();
+  }
+}
+
+function agregarFilaComisionActual() {
+  if (comisionSeleccionada !== 'TODAS') {
+    agregarFilaComision(comisionSeleccionada);
+  } else {
+    agregarFilaComision('ATE');
+  }
+}
+
+function renderComisionesUsuarios() {
+  const table = document.getElementById('tablaComisiones');
+  if (!table) return;
+
+  const q = (document.getElementById('filtroComTexto')?.value || '').toLowerCase().trim();
+
+  if (comisionSeleccionada !== 'TODAS') {
+    // VISTA ENFOCADA EN UNA COMISIÓN ESPECÍFICA
+    const com = comisionSeleccionada;
+    let list = comisionesData[com] || [];
+    let rowsHtml = '';
+
+    list.forEach((item, idx) => {
+      const match = !q || (item.canal || '').toLowerCase().includes(q) || (item.descripcion || '').toLowerCase().includes(q);
+      if (!match) return;
+
+      rowsHtml += `<tr>
+        <td style="text-align:center;font-weight:700;color:var(--muted);width:38px">${idx + 1}</td>
+        <td style="width:140px">
+          <input type="date" class="com-date-input" value="${escapeComAttr(item.inicio)}" onchange="updateComisionField('${com}', ${idx}, 'inicio', this.value)" title="Fecha de Inicio">
+        </td>
+        <td style="width:140px">
+          <input type="date" class="com-date-input" value="${escapeComAttr(item.fin)}" onchange="updateComisionField('${com}', ${idx}, 'fin', this.value)" title="Fecha de Fin">
+        </td>
+        <td style="min-width:180px">
+          <input type="text" class="com-cell-input" value="${escapeComAttr(item.canal)}" placeholder="Nombre del canal..." oninput="updateComisionField('${com}', ${idx}, 'canal', this.value)">
+        </td>
+        <td style="min-width:280px">
+          <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción / trabajo a realizar..." oninput="updateComisionField('${com}', ${idx}, 'descripcion', this.value)">
+        </td>
+        <td style="text-align:center;width:50px">
+          <button class="com-del-btn" title="Eliminar fila" onclick="eliminarFilaComision('${com}', ${idx})">🗑️</button>
+        </td>
+      </tr>`;
+    });
+
+    if (!rowsHtml) {
+      rowsHtml = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No se encontraron registros para la búsqueda.</td></tr>`;
+    }
+
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th colspan="6" class="main-title-th">COMISIONES DE USUARIOS — ${com}</th>
+        </tr>
+        <tr>
+          <th class="sub-th" style="width:38px">#</th>
+          <th class="sub-th" style="width:140px">📅 Inicio</th>
+          <th class="sub-th" style="width:140px">📅 Fin</th>
+          <th class="sub-th" style="min-width:180px">🌊 Canal</th>
+          <th class="sub-th" style="min-width:280px">📝 Descripción</th>
+          <th class="sub-th" style="width:50px">Acción</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6" style="text-align:center;background:var(--bg);padding:8px">
+            <button class="com-add-row-btn" onclick="agregarFilaComision('${com}')">➕ Agregar Fila a ${com}</button>
+          </td>
+        </tr>
+      </tfoot>
+    `;
+  } else {
+    // VISTA MATRIZ EXCEL COMPLETA (TODAS LAS 12 COMISIONES COMO EN LA IMAGEN)
+    const comCols = COMISIONES_LIST;
+    const maxRows = Math.max(3, ...comCols.map(c => (comisionesData[c] || []).length));
+
+    let thead = `
+      <tr>
+        <th colspan="${comCols.length * 4}" class="main-title-th">COMISIONES DE USUARIOS</th>
+      </tr>
+      <tr>
+        ${comCols.map(c => `<th colspan="4" class="com-name-th">${c}</th>`).join('')}
+      </tr>
+      <tr>
+        ${comCols.map(() => `
+          <th class="sub-th" style="width:130px">📅 Inicio</th>
+          <th class="sub-th" style="width:130px">📅 Fin</th>
+          <th class="sub-th" style="min-width:140px">🌊 Canal</th>
+          <th class="sub-th" style="min-width:200px">📝 Descripción</th>
+        `).join('')}
+      </tr>
+    `;
+
+    let tbody = '';
+    for (let r = 0; r < maxRows; r++) {
+      let tr = '<tr>';
+      comCols.forEach(c => {
+        const item = (comisionesData[c] && comisionesData[c][r]) ? comisionesData[c][r] : null;
+        if (item) {
+          const isMatch = !q || (item.canal || '').toLowerCase().includes(q) || (item.descripcion || '').toLowerCase().includes(q);
+          const cellBg = (q && isMatch) ? 'background:rgba(245,158,11,0.15);' : '';
+          tr += `
+            <td style="${cellBg}">
+              <input type="date" class="com-date-input" value="${escapeComAttr(item.inicio)}" onchange="updateComisionField('${c}', ${r}, 'inicio', this.value)" title="Fecha Inicio (${c})">
+            </td>
+            <td style="${cellBg}">
+              <input type="date" class="com-date-input" value="${escapeComAttr(item.fin)}" onchange="updateComisionField('${c}', ${r}, 'fin', this.value)" title="Fecha Fin (${c})">
+            </td>
+            <td style="${cellBg}">
+              <input type="text" class="com-cell-input" value="${escapeComAttr(item.canal)}" placeholder="Canal..." oninput="updateComisionField('${c}', ${r}, 'canal', this.value)">
+            </td>
+            <td style="${cellBg}">
+              <div style="display:flex;align-items:center;gap:3px">
+                <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción..." oninput="updateComisionField('${c}', ${r}, 'descripcion', this.value)">
+                <button class="com-del-btn" title="Eliminar fila de ${c}" onclick="eliminarFilaComision('${c}', ${r})">🗑️</button>
+              </div>
+            </td>
+          `;
+        } else {
+          tr += `
+            <td style="background:var(--bg)"></td>
+            <td style="background:var(--bg)"></td>
+            <td style="background:var(--bg)"></td>
+            <td style="background:var(--bg)"></td>
+          `;
+        }
+      });
+      tr += '</tr>';
+      tbody += tr;
+    }
+
+    let tfoot = '<tr>';
+    comCols.forEach(c => {
+      tfoot += `
+        <td colspan="4" style="text-align:center;background:var(--bg);padding:6px">
+          <button class="com-add-row-btn" onclick="agregarFilaComision('${c}')">➕ Fila ${c}</button>
+        </td>
+      `;
+    });
+    tfoot += '</tr>';
+
+    table.innerHTML = `<thead>${thead}</thead><tbody>${tbody}</tbody><tfoot>${tfoot}</tfoot>`;
+  }
+}
+
+// EXPORTAR A EXCEL (.xlsx)
+function exportarComisionesExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Biblioteca Excel cargándose, reintente en un momento');
+    return;
+  }
+
+  const rows = [];
+  // Fila 1: Título general
+  const totalCols = COMISIONES_LIST.length * 4;
+  const titleRow = ['COMISIONES DE USUARIOS'];
+  for (let i = 1; i < totalCols; i++) titleRow.push('');
+  rows.push(titleRow);
+
+  // Fila 2: Nombres de Comisiones
+  const comRow = [];
+  COMISIONES_LIST.forEach(c => {
+    comRow.push(c, '', '', '');
+  });
+  rows.push(comRow);
+
+  // Fila 3: Subcolumnas
+  const subRow = [];
+  COMISIONES_LIST.forEach(() => {
+    subRow.push('Inicio', 'Fin', 'Canal', 'Descripción');
+  });
+  rows.push(subRow);
+
+  // Filas de datos
+  const maxRows = Math.max(1, ...COMISIONES_LIST.map(c => (comisionesData[c] || []).length));
+  for (let r = 0; r < maxRows; r++) {
+    const dataRow = [];
+    COMISIONES_LIST.forEach(c => {
+      const item = (comisionesData[c] && comisionesData[c][r]) ? comisionesData[c][r] : null;
+      if (item) {
+        dataRow.push(item.inicio || '', item.fin || '', item.canal || '', item.descripcion || '');
+      } else {
+        dataRow.push('', '', '', '');
+      }
+    });
+    rows.push(dataRow);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Merges para el encabezado idéntico a Excel
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }
+  ];
+  COMISIONES_LIST.forEach((c, idx) => {
+    const colStart = idx * 4;
+    ws['!merges'].push({ s: { r: 1, c: colStart }, e: { r: 1, c: colStart + 3 } });
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Comisiones Usuarios');
+  XLSX.writeFile(wb, 'Comisiones_de_Usuarios_JUSHMRCB.xlsx');
+}
+
+// IMPRIMIR / PDF
+function imprimirComisionesPDF() {
+  window.print();
+}
+
+
+loadExpedientesFromFirebase();
+loadComisionesFromFirebase();
 
 // ===== LOGIN =====
 const USERS = [
