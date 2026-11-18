@@ -598,7 +598,7 @@ body::after{
   display: none;
   flex: 1;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
   background: var(--bg);
   padding: 14px 18px;
   gap: 12px;
@@ -617,6 +617,9 @@ body::after{
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 1px 4px var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 .com-filters {
   display: flex;
@@ -635,6 +638,31 @@ body::after{
 }
 .com-input:focus {
   border-color: var(--c1);
+}
+.com-view-modes {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.com-vbtn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  transition: all .15s;
+}
+.com-vbtn.active {
+  background: var(--navy);
+  color: #fff;
+}
+body.dark .com-vbtn.active {
+  background: var(--amber);
+  color: var(--navy);
 }
 .com-pills {
   display: flex;
@@ -670,13 +698,18 @@ body.dark .com-pill.active {
   border-color: var(--amber);
 }
 .com-table-wrap {
-  flex: 1;
   overflow: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 1px 4px var(--shadow);
   position: relative;
+  max-height: 400px;
+  transition: max-height .2s ease;
+}
+.com-table-wrap.full-height {
+  max-height: none;
+  flex: 1;
 }
 .com-table {
   width: 100%;
@@ -801,6 +834,185 @@ body.dark .com-add-row-btn:hover {
   background: rgba(245,158,11,.15);
 }
 
+/* ===================== COMISIONES CALENDAR STYLES ===================== */
+.com-cal-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 1px 4px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.com-cal-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.com-cal-day-names {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.com-cdn {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 4px 0;
+  letter-spacing: .05em;
+}
+.com-cal-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.com-cal-day {
+  min-height: 90px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.com-cal-day:hover {
+  border-color: var(--c1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.com-cal-day.other {
+  opacity: .32;
+  background: var(--bg);
+}
+.com-cal-day.today {
+  border-color: var(--amber);
+  background: #fffbeb;
+}
+body.dark .com-cal-day.today {
+  background: #292524;
+  border-color: var(--amber);
+}
+.com-cal-day.selected {
+  border-color: var(--c1);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.3);
+  background: #eff6ff;
+}
+body.dark .com-cal-day.selected {
+  background: #1e3a5f;
+}
+.com-cal-day-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+.com-cal-day.today .com-cal-day-num {
+  background: var(--navy);
+  color: #fff;
+}
+body.dark .com-cal-day.today .com-cal-day-num {
+  background: var(--amber);
+  color: var(--navy);
+}
+.com-cal-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+  overflow: hidden;
+  flex: 1;
+}
+.com-cal-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  transition: opacity .15s;
+}
+.com-cal-chip:hover {
+  opacity: 0.88;
+}
+.com-cal-more {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: right;
+  margin-top: 1px;
+}
+.com-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+.com-cal-leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  transition: all .15s;
+}
+.com-cal-leg-item:hover {
+  background: var(--bg);
+  border-color: var(--border);
+}
+.com-cal-leg-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.com-day-detail-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.com-detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 </style>
 </head>
 <body>
@@ -927,11 +1139,12 @@ document.getElementById('waterDrop').addEventListener('click', function(){
 
 <!-- COMISIONES DE USUARIOS PANEL -->
 <div id="comisionesPanel">
+  <!-- BARRA DE HERRAMIENTAS -->
   <div class="com-toolbar">
     <div class="com-filters">
       <span style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:4px">🔍 Buscar:</span>
-      <input type="text" id="filtroComTexto" class="com-input" placeholder="Buscar canal o descripción..." style="width:220px" oninput="filtrarComisiones()">
-      <span style="font-weight:700;font-size:12px;color:var(--muted);margin-left:6px">Comisión:</span>
+      <input type="text" id="filtroComTexto" class="com-input" placeholder="Buscar canal o descripción..." style="width:210px" oninput="filtrarComisiones()">
+      <span style="font-weight:700;font-size:12px;color:var(--muted);margin-left:4px">Comisión:</span>
       <select id="filtroComSelect" class="com-input" onchange="seleccionarComision(this.value)">
         <option value="TODAS">🏢 Todas las Comisiones</option>
         <option value="ATE">ATE</option>
@@ -952,12 +1165,18 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     </div>
 
     <div class="exp-actions">
+      <!-- Selector de Modo de Vista -->
+      <div class="com-view-modes">
+        <button class="com-vbtn active" id="btnComViewSplit" onclick="setComViewMode('split')">📊 Tabla + Calendario</button>
+        <button class="com-vbtn" id="btnComViewTable" onclick="setComViewMode('table')">📋 Solo Tabla</button>
+        <button class="com-vbtn" id="btnComViewCal" onclick="setComViewMode('cal')">📅 Solo Calendario</button>
+      </div>
       <button class="btn btn-success btn-sm" onclick="exportarComisionesExcel()">📥 Excel</button>
       <button class="btn btn-amber btn-sm" onclick="imprimirComisionesPDF()">🖨️ PDF / Imprimir</button>
     </div>
   </div>
 
-  <!-- Pestañas de acceso rápido a cada comisión -->
+  <!-- PESTAÑAS RÁPIDAS DE CADA COMISIÓN -->
   <div class="com-pills" id="comPills">
     <div class="com-pill active" onclick="seleccionarComision('TODAS')">🏢 Todas</div>
     <div class="com-pill" onclick="seleccionarComision('ATE')">ATE</div>
@@ -974,10 +1193,48 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     <div class="com-pill" onclick="seleccionarComision('PARCA')">PARCA</div>
   </div>
 
-  <div class="com-table-wrap">
+  <!-- TABLA EDITABLE DE COMISIONES -->
+  <div class="com-table-wrap" id="comTableWrap">
     <table class="com-table" id="tablaComisiones">
       <!-- Generado dinámicamente -->
     </table>
+  </div>
+
+  <!-- CALENDARIO DE COMISIONES (APROVECHA EL ESPACIO EN BLANCO) -->
+  <div class="com-cal-section" id="comCalSection">
+    <div class="com-cal-header">
+      <div class="com-cal-title-area">
+        <span style="font-weight:700;font-size:14px;color:var(--text)">📅 Calendario de Comisiones Programadas</span>
+        <h3 id="comCalMonthTitle" style="font-size:15px;font-weight:800;color:var(--c1);text-transform:capitalize;margin:0"></h3>
+        <span id="comCalCountBadge" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--bg);color:var(--muted);border:1px solid var(--border)"></span>
+      </div>
+      <div class="com-cal-month-nav">
+        <button class="btn btn-navy btn-sm" onclick="chComCalMonth(-1)">‹</button>
+        <button class="btn btn-navy btn-sm" onclick="goTodayComCal()">Hoy</button>
+        <button class="btn btn-navy btn-sm" onclick="chComCalMonth(1)">›</button>
+      </div>
+    </div>
+
+    <!-- Días de la semana -->
+    <div class="com-cal-day-names">
+      <div class="com-cdn">Dom</div><div class="com-cdn">Lun</div><div class="com-cdn">Mar</div>
+      <div class="com-cdn">Mié</div><div class="com-cdn">Jue</div><div class="com-cdn">Vie</div><div class="com-cdn">Sáb</div>
+    </div>
+
+    <!-- Grilla del mes -->
+    <div class="com-cal-days-grid" id="comCalDaysGrid"></div>
+
+    <!-- Detalle de comisiones del día seleccionado al hacer clic -->
+    <div class="com-day-detail-box" id="comDayDetailBox" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h4 id="comDayDetailTitle" style="font-size:13px;font-weight:700;color:var(--text);margin:0"></h4>
+        <button class="btn btn-ghost btn-sm" style="padding:1px 8px;font-size:10px;border:1px solid var(--border)" onclick="document.getElementById('comDayDetailBox').style.display='none'">✕ Cerrar</button>
+      </div>
+      <div id="comDayDetailList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <!-- Leyenda interactiva de las 12 comisiones con sus colores -->
+    <div class="com-cal-legend" id="comCalLegend"></div>
   </div>
 </div>
 
@@ -4239,9 +4496,46 @@ const COMISIONES_LIST = [
   'PARCA'
 ];
 
+// Colores únicos de alta legibilidad para cada comisión
+const COMISIONES_COLORS = {
+  'ATE':           { bg: '#2563eb', text: '#ffffff', border: '#1d4ed8' }, // Azul
+  'SURCO':         { bg: '#16a34a', text: '#ffffff', border: '#15803d' }, // Verde
+  'CHOSICA':       { bg: '#d97706', text: '#ffffff', border: '#b45309' }, // Ámbar
+  'CHACRASANA':    { bg: '#dc2626', text: '#ffffff', border: '#b91c1c' }, // Rojo
+  'CHACLACAYO':    { bg: '#9333ea', text: '#ffffff', border: '#7e22ce' }, // Púrpura
+  'LA ESTRELLA':   { bg: '#0891b2', text: '#ffffff', border: '#0e7490' }, // Cyan
+  'ÑAÑA':          { bg: '#ea580c', text: '#ffffff', border: '#c2410c' }, // Naranja
+  'CARAPONGO':     { bg: '#4f46e5', text: '#ffffff', border: '#4338ca' }, // Índigo
+  'HUACHIPA':      { bg: '#059669', text: '#ffffff', border: '#047857' }, // Esmeralda
+  'NIEVERÍA':      { bg: '#db2777', text: '#ffffff', border: '#be185d' }, // Rosa
+  'RICARDO PALMA': { bg: '#854d0e', text: '#ffffff', border: '#713f12' }, // Marrón dorado
+  'PARCA':         { bg: '#475569', text: '#ffffff', border: '#334155' }  // Pizarra
+};
+
 let comisionesData = {};
 let comisionSeleccionada = 'TODAS';
 let comisionDebounceTimer = null;
+let comCalCurrentDate = new Date();
+let comCalSelectedDate = null;
+let comViewMode = 'split'; // 'split', 'table', 'cal'
+
+function parseComYmd(str) {
+  if (!str) return null;
+  const parts = str.split('-');
+  if (parts.length !== 3) return null;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+  return new Date(y, m, d);
+}
+
+function formatComYmd(dt) {
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const d = String(dt.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
 
 function getInitialComisionesState() {
   const state = {};
@@ -4304,7 +4598,7 @@ async function loadComisionesFromFirebase() {
     comisionesData = getInitialComisionesState();
   }
 
-  // Listener en tiempo real entre PCs
+  // Listener en tiempo real entre computadoras
   const fireDb = window.db || (typeof db !== 'undefined' ? db : null);
   if (fireDb) {
     fireDb.ref('comisiones_usuarios').on('value', snap => {
@@ -4367,6 +4661,30 @@ function escapeComAttr(str) {
   return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+function setComViewMode(mode) {
+  comViewMode = mode;
+  const tWrap = document.getElementById('comTableWrap');
+  const cSec = document.getElementById('comCalSection');
+  const btnS = document.getElementById('btnComViewSplit');
+  const btnT = document.getElementById('btnComViewTable');
+  const btnC = document.getElementById('btnComViewCal');
+
+  if (btnS) btnS.classList.toggle('active', mode === 'split');
+  if (btnT) btnT.classList.toggle('active', mode === 'table');
+  if (btnC) btnC.classList.toggle('active', mode === 'cal');
+
+  if (mode === 'split') {
+    if (tWrap) { tWrap.style.display = 'block'; tWrap.classList.remove('full-height'); }
+    if (cSec) cSec.style.display = 'flex';
+  } else if (mode === 'table') {
+    if (tWrap) { tWrap.style.display = 'block'; tWrap.classList.add('full-height'); }
+    if (cSec) cSec.style.display = 'none';
+  } else if (mode === 'cal') {
+    if (tWrap) tWrap.style.display = 'none';
+    if (cSec) cSec.style.display = 'flex';
+  }
+}
+
 function seleccionarComision(com) {
   comisionSeleccionada = com;
   const select = document.getElementById('filtroComSelect');
@@ -4402,6 +4720,8 @@ function updateComisionField(comision, index, field, value) {
   }
   comisionesData[comision][index][field] = value;
   scheduleSaveComisiones();
+  // Sincronizar de inmediato el calendario para reflejar la fecha
+  renderComisionesCalendar();
 }
 
 function agregarFilaComision(comision) {
@@ -4444,6 +4764,11 @@ function agregarFilaComisionActual() {
 }
 
 function renderComisionesUsuarios() {
+  renderTablaComisionesDOM();
+  renderComisionesCalendar();
+}
+
+function renderTablaComisionesDOM() {
   const table = document.getElementById('tablaComisiones');
   if (!table) return;
 
@@ -4580,6 +4905,214 @@ function renderComisionesUsuarios() {
   }
 }
 
+// ===================== CALENDARIO DE COMISIONES (LÓGICA VISUAL) =====================
+function chComCalMonth(dir) {
+  comCalCurrentDate.setMonth(comCalCurrentDate.getMonth() + dir);
+  renderComisionesCalendar();
+}
+
+function goTodayComCal() {
+  comCalCurrentDate = new Date();
+  comCalSelectedDate = formatComYmd(new Date());
+  renderComisionesCalendar();
+}
+
+// Retorna todas las comisiones activas para una fecha dada (YYYY-MM-DD)
+function getComisionesForDate(dateStr) {
+  const result = [];
+  const comsToCheck = (comisionSeleccionada !== 'TODAS') ? [comisionSeleccionada] : COMISIONES_LIST;
+
+  comsToCheck.forEach(com => {
+    const list = comisionesData[com] || [];
+    list.forEach(item => {
+      const ini = item.inicio;
+      const fin = item.fin;
+
+      let isActive = false;
+      if (ini && fin) {
+        if (dateStr >= ini && dateStr <= fin) isActive = true;
+      } else if (ini) {
+        if (dateStr === ini) isActive = true;
+      } else if (fin) {
+        if (dateStr === fin) isActive = true;
+      }
+
+      if (isActive) {
+        result.push({
+          comision: com,
+          canal: item.canal || '(Sin canal)',
+          descripcion: item.descripcion || '',
+          inicio: ini,
+          fin: fin,
+          color: COMISIONES_COLORS[com] || { bg: '#2563eb', text: '#fff' }
+        });
+      }
+    });
+  });
+
+  return result;
+}
+
+function renderComisionesCalendar() {
+  const titleEl = document.getElementById('comCalMonthTitle');
+  const gridEl = document.getElementById('comCalDaysGrid');
+  const countBadge = document.getElementById('comCalCountBadge');
+  if (!gridEl || !titleEl) return;
+
+  const y = comCalCurrentDate.getFullYear();
+  const m = comCalCurrentDate.getMonth();
+
+  titleEl.textContent = new Date(y, m, 1).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+
+  const firstDayIndex = new Date(y, m, 1).getDay(); // 0 = Dom, 1 = Lun, etc.
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevMonthDays = new Date(y, m, 0).getDate();
+
+  const todayStr = formatComYmd(new Date());
+
+  gridEl.innerHTML = '';
+  let monthTotalEvents = 0;
+
+  // Días del mes previo
+  for (let x = firstDayIndex; x > 0; x--) {
+    const prevDate = new Date(y, m - 1, prevMonthDays - x + 1);
+    const dateStr = formatComYmd(prevDate);
+    gridEl.appendChild(createComCalDayCell(prevDate, dateStr, true, todayStr));
+  }
+
+  // Días del mes actual
+  for (let d = 1; d <= daysInMonth; d++) {
+    const curDate = new Date(y, m, d);
+    const dateStr = formatComYmd(curDate);
+    const cell = createComCalDayCell(curDate, dateStr, false, todayStr);
+    gridEl.appendChild(cell);
+
+    const events = getComisionesForDate(dateStr);
+    monthTotalEvents += events.length;
+  }
+
+  // Días del mes siguiente para completar la cuadrícula de 7 columnas
+  const totalCells = firstDayIndex + daysInMonth;
+  const nextDays = (totalCells % 7 === 0) ? 0 : (7 - (totalCells % 7));
+  for (let n = 1; n <= nextDays; n++) {
+    const nextDate = new Date(y, m + 1, n);
+    const dateStr = formatComYmd(nextDate);
+    gridEl.appendChild(createComCalDayCell(nextDate, dateStr, true, todayStr));
+  }
+
+  if (countBadge) {
+    countBadge.textContent = monthTotalEvents + ' comisiones activas este mes';
+  }
+
+  // Renderizar leyenda
+  renderComCalLegend();
+
+  // Si hay un día seleccionado, refrescar su detalle
+  if (comCalSelectedDate) {
+    showComDayDetail(comCalSelectedDate);
+  }
+}
+
+function createComCalDayCell(dt, dateStr, isOther, todayStr) {
+  const cell = document.createElement('div');
+  cell.className = 'com-cal-day';
+  if (isOther) cell.classList.add('other');
+  if (dateStr === todayStr) cell.classList.add('today');
+  if (dateStr === comCalSelectedDate) cell.classList.add('selected');
+
+  const numEl = document.createElement('div');
+  numEl.className = 'com-cal-day-num';
+  numEl.textContent = dt.getDate();
+  cell.appendChild(numEl);
+
+  const events = getComisionesForDate(dateStr);
+
+  const chipsWrap = document.createElement('div');
+  chipsWrap.className = 'com-cal-chips';
+
+  const maxDisplay = 3;
+  events.slice(0, maxDisplay).forEach(ev => {
+    const chip = document.createElement('div');
+    chip.className = 'com-cal-chip';
+    chip.style.backgroundColor = ev.color.bg;
+    chip.style.color = ev.color.text;
+    chip.textContent = ev.comision + ': ' + ev.canal;
+    chip.title = ev.comision + ' - Canal: ' + ev.canal + (ev.descripcion ? ' (' + ev.descripcion + ')' : '') + '\nFechas: ' + (ev.inicio || '') + ' al ' + (ev.fin || '');
+    chipsWrap.appendChild(chip);
+  });
+
+  if (events.length > maxDisplay) {
+    const moreEl = document.createElement('div');
+    moreEl.className = 'com-cal-more';
+    moreEl.textContent = '+' + (events.length - maxDisplay) + ' más...';
+    chipsWrap.appendChild(moreEl);
+  }
+
+  cell.appendChild(chipsWrap);
+
+  cell.onclick = () => {
+    comCalSelectedDate = dateStr;
+    const allDays = document.querySelectorAll('.com-cal-day');
+    allDays.forEach(d => d.classList.remove('selected'));
+    cell.classList.add('selected');
+    showComDayDetail(dateStr);
+  };
+
+  return cell;
+}
+
+function showComDayDetail(dateStr) {
+  const box = document.getElementById('comDayDetailBox');
+  const title = document.getElementById('comDayDetailTitle');
+  const list = document.getElementById('comDayDetailList');
+  if (!box || !title || !list) return;
+
+  const dt = parseComYmd(dateStr);
+  const events = getComisionesForDate(dateStr);
+
+  const formattedDate = dt ? dt.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : dateStr;
+  title.textContent = '📌 Comisiones programadas para el ' + formattedDate;
+
+  if (events.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">No hay comisiones asignadas para esta fecha.</div>';
+  } else {
+    list.innerHTML = events.map(ev => {
+      const rango = (ev.inicio && ev.fin) ? (ev.inicio + ' al ' + ev.fin) : (ev.inicio || ev.fin || 'Fecha puntual');
+      return `
+        <div class="com-detail-card" style="border-left-color:${ev.color.bg}">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;font-weight:800;color:#fff;background:${ev.color.bg};padding:3px 8px;border-radius:6px">${ev.comision}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--text)">🌊 ${escapeComAttr(ev.canal)}</span>
+            ${ev.descripcion ? `<span style="font-size:12px;color:var(--muted)">· ${escapeComAttr(ev.descripcion)}</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:600;color:var(--muted);background:var(--bg);padding:2px 7px;border-radius:4px;border:1px solid var(--border)">🗓️ ${rango}</span>
+            <button class="btn btn-navy btn-sm" style="padding:2px 8px;font-size:10px" onclick="seleccionarComision('${ev.comision}')">Ver en tabla</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  box.style.display = 'flex';
+}
+
+function renderComCalLegend() {
+  const legendEl = document.getElementById('comCalLegend');
+  if (!legendEl) return;
+
+  legendEl.innerHTML = '<span style="font-size:11px;font-weight:700;color:var(--muted)">Comisiones:</span>' +
+    COMISIONES_LIST.map(c => {
+      const col = COMISIONES_COLORS[c];
+      return `
+        <div class="com-cal-leg-item" onclick="seleccionarComision('${c}')" title="Filtrar por ${c}">
+          <span class="com-cal-leg-dot" style="background:${col.bg}"></span>
+          <span>${c}</span>
+        </div>
+      `;
+    }).join('');
+}
+
 // EXPORTAR A EXCEL (.xlsx)
 function exportarComisionesExcel() {
   if (typeof XLSX === 'undefined') {
@@ -4588,27 +5121,23 @@ function exportarComisionesExcel() {
   }
 
   const rows = [];
-  // Fila 1: Título general
   const totalCols = COMISIONES_LIST.length * 4;
   const titleRow = ['COMISIONES DE USUARIOS'];
   for (let i = 1; i < totalCols; i++) titleRow.push('');
   rows.push(titleRow);
 
-  // Fila 2: Nombres de Comisiones
   const comRow = [];
   COMISIONES_LIST.forEach(c => {
     comRow.push(c, '', '', '');
   });
   rows.push(comRow);
 
-  // Fila 3: Subcolumnas
   const subRow = [];
   COMISIONES_LIST.forEach(() => {
     subRow.push('Inicio', 'Fin', 'Canal', 'Descripción');
   });
   rows.push(subRow);
 
-  // Filas de datos
   const maxRows = Math.max(1, ...COMISIONES_LIST.map(c => (comisionesData[c] || []).length));
   for (let r = 0; r < maxRows; r++) {
     const dataRow = [];
@@ -4625,7 +5154,6 @@ function exportarComisionesExcel() {
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
-  // Merges para el encabezado idéntico a Excel
   ws['!merges'] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }
   ];
