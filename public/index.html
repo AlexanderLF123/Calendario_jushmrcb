@@ -4558,9 +4558,9 @@ function getInitialComisionesState() {
   const state = {};
   COMISIONES_LIST.forEach(com => {
     state[com] = [
-      { id: 'c_' + com + '_1', inicio: '', fin: '', canal: '', descripcion: '' },
-      { id: 'c_' + com + '_2', inicio: '', fin: '', canal: '', descripcion: '' },
-      { id: 'c_' + com + '_3', inicio: '', fin: '', canal: '', descripcion: '' }
+      { id: 'c_' + com + '_1', inicio: '', fin: '', canal: '', expediente: '', descripcion: '' },
+      { id: 'c_' + com + '_2', inicio: '', fin: '', canal: '', expediente: '', descripcion: '' },
+      { id: 'c_' + com + '_3', inicio: '', fin: '', canal: '', expediente: '', descripcion: '' }
     ];
   });
   return state;
@@ -4581,13 +4581,14 @@ function normalizeComisionesData(val) {
       inicio: (item && item.inicio) || '',
       fin: (item && item.fin) || '',
       canal: (item && item.canal) || '',
+      expediente: (item && (item.expediente || item.expRef)) || '',
       descripcion: (item && item.descripcion) || ''
     }));
     if (res[com].length === 0) {
       res[com] = [
-        { id: 'c_' + com + '_1', inicio: '', fin: '', canal: '', descripcion: '' },
-        { id: 'c_' + com + '_2', inicio: '', fin: '', canal: '', descripcion: '' },
-        { id: 'c_' + com + '_3', inicio: '', fin: '', canal: '', descripcion: '' }
+        { id: 'c_' + com + '_1', inicio: '', fin: '', canal: '', expediente: '', descripcion: '' },
+        { id: 'c_' + com + '_2', inicio: '', fin: '', canal: '', expediente: '', descripcion: '' },
+        { id: 'c_' + com + '_3', inicio: '', fin: '', canal: '', expediente: '', descripcion: '' }
       ];
     }
   });
@@ -4732,12 +4733,12 @@ function updateComisionField(comision, index, field, value) {
       inicio: '',
       fin: '',
       canal: '',
+      expediente: '',
       descripcion: ''
     });
   }
   comisionesData[comision][index][field] = value;
   scheduleSaveComisiones();
-  // Sincronizar de inmediato el calendario para reflejar la fecha
   renderComisionesCalendar();
 }
 
@@ -4748,6 +4749,7 @@ function agregarFilaComision(comision) {
     inicio: '',
     fin: '',
     canal: '',
+    expediente: '',
     descripcion: ''
   });
   scheduleSaveComisiones();
@@ -4764,6 +4766,7 @@ function eliminarFilaComision(comision, index) {
         inicio: '',
         fin: '',
         canal: '',
+        expediente: '',
         descripcion: ''
       });
     }
@@ -4792,80 +4795,88 @@ function renderTablaComisionesDOM() {
   const q = (document.getElementById('filtroComTexto')?.value || '').toLowerCase().trim();
 
   if (comisionSeleccionada !== 'TODAS') {
-    // VISTA ENFOCADA EN UNA COMISIÓN ESPECÍFICA
+    // VISTA ENFOCADA EN UNA COMISIÓN ESPECÍFICA (CON EXPEDIENTE DE REFERENCIA)
     const com = comisionSeleccionada;
     let list = comisionesData[com] || [];
     let rowsHtml = '';
 
     list.forEach((item, idx) => {
-      const match = !q || (item.canal || '').toLowerCase().includes(q) || (item.descripcion || '').toLowerCase().includes(q);
+      const match = !q ||
+        (item.canal || '').toLowerCase().includes(q) ||
+        (item.expediente || '').toLowerCase().includes(q) ||
+        (item.descripcion || '').toLowerCase().includes(q);
       if (!match) return;
 
       rowsHtml += `<tr>
         <td style="text-align:center;font-weight:700;color:var(--muted);width:38px">${idx + 1}</td>
-        <td style="width:140px">
+        <td style="width:130px">
           <input type="date" class="com-date-input" value="${escapeComAttr(item.inicio)}" onchange="updateComisionField('${com}', ${idx}, 'inicio', this.value)" title="Fecha de Inicio">
         </td>
-        <td style="width:140px">
+        <td style="width:130px">
           <input type="date" class="com-date-input" value="${escapeComAttr(item.fin)}" onchange="updateComisionField('${com}', ${idx}, 'fin', this.value)" title="Fecha de Fin">
         </td>
-        <td style="min-width:180px">
+        <td style="min-width:160px">
           <input type="text" class="com-cell-input" value="${escapeComAttr(item.canal)}" placeholder="Nombre del canal..." oninput="updateComisionField('${com}', ${idx}, 'canal', this.value)">
         </td>
-        <td style="min-width:280px">
-          <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción / trabajo a realizar..." oninput="updateComisionField('${com}', ${idx}, 'descripcion', this.value)">
+        <td style="min-width:160px">
+          <input type="text" class="com-cell-input" value="${escapeComAttr(item.expediente)}" placeholder="Ej. Exp. 1386-2026..." oninput="updateComisionField('${com}', ${idx}, 'expediente', this.value)" style="font-weight:600;color:var(--c1)">
         </td>
-        <td style="text-align:center;width:50px">
+        <td style="min-width:240px">
+          <input type="text" class="com-cell-input" value="${escapeComAttr(item.descripcion)}" placeholder="Descripción / actividad..." oninput="updateComisionField('${com}', ${idx}, 'descripcion', this.value)">
+        </td>
+        <td style="text-align:center;width:45px">
           <button class="com-del-btn" title="Eliminar fila" onclick="eliminarFilaComision('${com}', ${idx})">🗑️</button>
         </td>
       </tr>`;
     });
 
     if (!rowsHtml) {
-      rowsHtml = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No se encontraron registros para la búsqueda.</td></tr>`;
+      rowsHtml = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">No se encontraron registros para la búsqueda.</td></tr>`;
     }
 
     table.innerHTML = `
       <thead>
         <tr>
-          <th colspan="6" class="main-title-th">CRONOGRAMA DE ACTIVIDADES — ${com}</th>
+          <th colspan="7" class="main-title-th">CRONOGRAMA DE ACTIVIDADES — ${com}</th>
         </tr>
         <tr>
           <th class="sub-th" style="width:38px">#</th>
-          <th class="sub-th" style="width:140px">📅 Inicio</th>
-          <th class="sub-th" style="width:140px">📅 Fin</th>
-          <th class="sub-th" style="min-width:180px">🌊 Canal</th>
-          <th class="sub-th" style="min-width:280px">📝 Descripción</th>
-          <th class="sub-th" style="width:50px">Acción</th>
+          <th class="sub-th" style="width:130px">📅 Inicio</th>
+          <th class="sub-th" style="width:130px">📅 Fin</th>
+          <th class="sub-th" style="min-width:160px">🌊 Canal</th>
+          <th class="sub-th" style="min-width:160px">📁 Exp. Referencia</th>
+          <th class="sub-th" style="min-width:240px">📝 Descripción</th>
+          <th class="sub-th" style="width:45px">Acción</th>
         </tr>
       </thead>
       <tbody>${rowsHtml}</tbody>
       <tfoot>
         <tr>
-          <td colspan="6" style="text-align:center;background:var(--bg);padding:8px">
+          <td colspan="7" style="text-align:center;background:var(--bg);padding:8px">
             <button class="com-add-row-btn" onclick="agregarFilaComision('${com}')">➕ Agregar Fila a ${com}</button>
           </td>
         </tr>
       </tfoot>
     `;
   } else {
-    // VISTA MATRIZ EXCEL COMPLETA (TODAS LAS 12 COMISIONES COMO EN LA IMAGEN)
+    // VISTA MATRIZ COMPLETA (TODAS LAS 12 COMISIONES CON EXPEDIENTE DE REFERENCIA)
     const comCols = COMISIONES_LIST;
     const maxRows = Math.max(3, ...comCols.map(c => (comisionesData[c] || []).length));
 
     let thead = `
       <tr>
-        <th colspan="${comCols.length * 4}" class="main-title-th">CRONOGRAMA DE ACTIVIDADES</th>
+        <th colspan="${comCols.length * 5}" class="main-title-th">CRONOGRAMA DE ACTIVIDADES</th>
       </tr>
       <tr>
-        ${comCols.map(c => `<th colspan="4" class="com-name-th">${c}</th>`).join('')}
+        ${comCols.map(c => `<th colspan="5" class="com-name-th">${c}</th>`).join('')}
       </tr>
       <tr>
         ${comCols.map(() => `
-          <th class="sub-th" style="width:130px">📅 Inicio</th>
-          <th class="sub-th" style="width:130px">📅 Fin</th>
-          <th class="sub-th" style="min-width:140px">🌊 Canal</th>
-          <th class="sub-th" style="min-width:200px">📝 Descripción</th>
+          <th class="sub-th" style="width:125px">📅 Inicio</th>
+          <th class="sub-th" style="width:125px">📅 Fin</th>
+          <th class="sub-th" style="min-width:130px">🌊 Canal</th>
+          <th class="sub-th" style="min-width:130px">📁 Exp. Ref.</th>
+          <th class="sub-th" style="min-width:180px">📝 Descripción</th>
         `).join('')}
       </tr>
     `;
@@ -4876,7 +4887,10 @@ function renderTablaComisionesDOM() {
       comCols.forEach(c => {
         const item = (comisionesData[c] && comisionesData[c][r]) ? comisionesData[c][r] : null;
         if (item) {
-          const isMatch = !q || (item.canal || '').toLowerCase().includes(q) || (item.descripcion || '').toLowerCase().includes(q);
+          const isMatch = !q ||
+            (item.canal || '').toLowerCase().includes(q) ||
+            (item.expediente || '').toLowerCase().includes(q) ||
+            (item.descripcion || '').toLowerCase().includes(q);
           const cellBg = (q && isMatch) ? 'background:rgba(245,158,11,0.15);' : '';
           tr += `
             <td style="${cellBg}">
@@ -4887,6 +4901,9 @@ function renderTablaComisionesDOM() {
             </td>
             <td style="${cellBg}">
               <input type="text" class="com-cell-input" value="${escapeComAttr(item.canal)}" placeholder="Canal..." oninput="updateComisionField('${c}', ${r}, 'canal', this.value)">
+            </td>
+            <td style="${cellBg}">
+              <input type="text" class="com-cell-input" value="${escapeComAttr(item.expediente)}" placeholder="Exp. Ref..." oninput="updateComisionField('${c}', ${r}, 'expediente', this.value)" style="font-weight:600;color:var(--c1)">
             </td>
             <td style="${cellBg}">
               <div style="display:flex;align-items:center;gap:3px">
@@ -4901,6 +4918,7 @@ function renderTablaComisionesDOM() {
             <td style="background:var(--bg)"></td>
             <td style="background:var(--bg)"></td>
             <td style="background:var(--bg)"></td>
+            <td style="background:var(--bg)"></td>
           `;
         }
       });
@@ -4911,7 +4929,7 @@ function renderTablaComisionesDOM() {
     let tfoot = '<tr>';
     comCols.forEach(c => {
       tfoot += `
-        <td colspan="4" style="text-align:center;background:var(--bg);padding:6px">
+        <td colspan="5" style="text-align:center;background:var(--bg);padding:6px">
           <button class="com-add-row-btn" onclick="agregarFilaComision('${c}')">➕ Fila ${c}</button>
         </td>
       `;
@@ -4958,6 +4976,7 @@ function getComisionesForDate(dateStr) {
         result.push({
           comision: com,
           canal: item.canal || '(Sin canal)',
+          expediente: item.expediente || '',
           descripcion: item.descripcion || '',
           inicio: ini,
           fin: fin,
@@ -5018,13 +5037,11 @@ function renderComisionesCalendar() {
   }
 
   if (countBadge) {
-    countBadge.textContent = monthTotalEvents + ' comisiones activas este mes';
+    countBadge.textContent = monthTotalEvents + ' actividades este mes';
   }
 
-  // Renderizar leyenda
   renderComCalLegend();
 
-  // Si hay un día seleccionado, refrescar su detalle
   if (comCalSelectedDate) {
     showComDayDetail(comCalSelectedDate);
   }
@@ -5047,14 +5064,18 @@ function createComCalDayCell(dt, dateStr, isOther, todayStr) {
   const chipsWrap = document.createElement('div');
   chipsWrap.className = 'com-cal-chips';
 
-  const maxDisplay = 3;
+  const maxDisplay = 2;
   events.slice(0, maxDisplay).forEach(ev => {
     const chip = document.createElement('div');
     chip.className = 'com-cal-chip';
     chip.style.backgroundColor = ev.color.bg;
     chip.style.color = ev.color.text;
-    chip.textContent = ev.comision + ': ' + ev.canal;
-    chip.title = ev.comision + ' - Canal: ' + ev.canal + (ev.descripcion ? ' (' + ev.descripcion + ')' : '') + '\nFechas: ' + (ev.inicio || '') + ' al ' + (ev.fin || '');
+    const expInfo = ev.expediente ? (' [' + ev.expediente + ']') : '';
+    chip.textContent = ev.comision + ': ' + ev.canal + expInfo;
+    chip.title = ev.comision + ' - Canal: ' + ev.canal +
+      (ev.expediente ? ('\nExp. Ref: ' + ev.expediente) : '') +
+      (ev.descripcion ? ('\nDescripción: ' + ev.descripcion) : '') +
+      '\nFechas: ' + (ev.inicio || '') + ' al ' + (ev.fin || '');
     chipsWrap.appendChild(chip);
   });
 
@@ -5088,18 +5109,19 @@ function showComDayDetail(dateStr) {
   const events = getComisionesForDate(dateStr);
 
   const formattedDate = dt ? dt.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : dateStr;
-  title.textContent = '📌 Comisiones programadas para el ' + formattedDate;
+  title.textContent = '📌 Actividades programadas para el ' + formattedDate;
 
   if (events.length === 0) {
-    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">No hay comisiones asignadas para esta fecha.</div>';
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">No hay actividades asignadas para esta fecha.</div>';
   } else {
     list.innerHTML = events.map(ev => {
       const rango = (ev.inicio && ev.fin) ? (ev.inicio + ' al ' + ev.fin) : (ev.inicio || ev.fin || 'Fecha puntual');
       return `
         <div class="com-detail-card" style="border-left-color:${ev.color.bg}">
-          <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span style="font-size:11px;font-weight:800;color:#fff;background:${ev.color.bg};padding:3px 8px;border-radius:6px">${ev.comision}</span>
             <span style="font-size:13px;font-weight:700;color:var(--text)">🌊 ${escapeComAttr(ev.canal)}</span>
+            ${ev.expediente ? `<span style="font-size:11px;font-weight:700;color:var(--c1);background:rgba(59,130,246,0.1);padding:2px 7px;border-radius:4px;border:1px solid rgba(59,130,246,0.3)">📁 ${escapeComAttr(ev.expediente)}</span>` : ''}
             ${ev.descripcion ? `<span style="font-size:12px;color:var(--muted)">· ${escapeComAttr(ev.descripcion)}</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
@@ -5130,7 +5152,7 @@ function renderComCalLegend() {
     }).join('');
 }
 
-// EXPORTAR A EXCEL (.xlsx)
+// EXPORTAR A EXCEL (.xlsx) CON EXPEDIENTE DE REFERENCIA
 function exportarComisionesExcel() {
   if (typeof XLSX === 'undefined') {
     alert('Biblioteca Excel cargándose, reintente en un momento');
@@ -5138,20 +5160,20 @@ function exportarComisionesExcel() {
   }
 
   const rows = [];
-  const totalCols = COMISIONES_LIST.length * 4;
+  const totalCols = COMISIONES_LIST.length * 5;
   const titleRow = ['CRONOGRAMA DE ACTIVIDADES'];
   for (let i = 1; i < totalCols; i++) titleRow.push('');
   rows.push(titleRow);
 
   const comRow = [];
   COMISIONES_LIST.forEach(c => {
-    comRow.push(c, '', '', '');
+    comRow.push(c, '', '', '', '');
   });
   rows.push(comRow);
 
   const subRow = [];
   COMISIONES_LIST.forEach(() => {
-    subRow.push('Inicio', 'Fin', 'Canal', 'Descripción');
+    subRow.push('Inicio', 'Fin', 'Canal', 'Exp. Referencia', 'Descripción');
   });
   rows.push(subRow);
 
@@ -5161,9 +5183,9 @@ function exportarComisionesExcel() {
     COMISIONES_LIST.forEach(c => {
       const item = (comisionesData[c] && comisionesData[c][r]) ? comisionesData[c][r] : null;
       if (item) {
-        dataRow.push(item.inicio || '', item.fin || '', item.canal || '', item.descripcion || '');
+        dataRow.push(item.inicio || '', item.fin || '', item.canal || '', item.expediente || '', item.descripcion || '');
       } else {
-        dataRow.push('', '', '', '');
+        dataRow.push('', '', '', '', '');
       }
     });
     rows.push(dataRow);
@@ -5175,18 +5197,13 @@ function exportarComisionesExcel() {
     { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }
   ];
   COMISIONES_LIST.forEach((c, idx) => {
-    const colStart = idx * 4;
-    ws['!merges'].push({ s: { r: 1, c: colStart }, e: { r: 1, c: colStart + 3 } });
+    const colStart = idx * 5;
+    ws['!merges'].push({ s: { r: 1, c: colStart }, e: { r: 1, c: colStart + 4 } });
   });
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Comisiones Usuarios');
+  XLSX.utils.book_append_sheet(wb, ws, 'Cronograma');
   XLSX.writeFile(wb, 'Cronograma_de_Actividades_JUSHMRCB.xlsx');
-}
-
-// IMPRIMIR / PDF
-function imprimirComisionesPDF() {
-  window.print();
 }
 
 
