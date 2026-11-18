@@ -2957,6 +2957,7 @@ function entryHTML(ci,ei,e){
           <option value="">--</option>
           ${[1,2,3,4,5].map(n=>`<option value="${n}" ${e.inspecciones==n?'selected':''}>${n}</option>`).join('')}
           <option value="Reunión" ${e.inspecciones==='Reunión'?'selected':''}>📅 Reunión</option>
+          <option value="Capacitación" ${(e.inspecciones==='Capacitación'||e.inspecciones==='CAPACITACION'||e.inspecciones==='Capacitacion')?'selected':''}>🎓 Capacitación</option>
         </select></div>
       <div class="fg"><label>🕐 Retorno</label>
         <input type="text" list="retornoSugerencias" id="e${ci}_${ei}_ret" value="${e.retorno||''}" placeholder="Ej: 16:30 o TODO EL DÍA"></div>
@@ -2978,8 +2979,8 @@ function entryHTML(ci,ei,e){
           <option value="">-- Seleccionar --</option>
           ${VEHICULOS.map(v=>`<option value="${v.placa}" ${e.placa===v.placa?'selected':''}>${v.placa} — ${v.desc}</option>`).join('')}
         </select></div>
-      <div class="fg"><label>📝 Detalles de la Inspección</label>
-        <textarea id="e${ci}_${ei}_obs" placeholder="Detalles de la inspección (obligatorio)" oninput="autoGrow(this)" onfocus="autoGrow(this)" style="resize:none;overflow:hidden;min-height:32px">${e.obs||''}</textarea></div>
+      <div class="fg"><label>📝 Descripción</label>
+        <textarea id="e${ci}_${ei}_obs" placeholder="Descripción (obligatorio)" oninput="autoGrow(this)" onfocus="autoGrow(this)" style="resize:none;overflow:hidden;min-height:32px">${e.obs||''}</textarea></div>
     </div>
     <div class="entry-actions">
       <button class="btn btn-success btn-sm" onclick="saveEntry(${ci},${ei})" title="Guardar solo esta salida">💾 Guardar</button>
@@ -3093,7 +3094,7 @@ async function saveEntry(ci,ei){
   const entry=dayData.drivers[ci].entries[ei];
   await saveSilent();
   if(!entry.obs||!entry.obs.trim()){
-    showToast('⚠️ Falta el campo "Detalles de la Inspección"');
+    showToast('⚠️ Falta el campo "Descripción"');
   } else {
     showToast('✅ Salida guardada');
   }
@@ -3248,7 +3249,7 @@ async function saveDay(){
     }
   }
   if(faltaObs.length>0){
-    alert('⚠️ Todas las salidas deben tener "Detalles de la Inspección":\n\n• '+faltaObs.join('\n• ')+'\n\nPor favor complétalos antes de guardar.');
+    alert('⚠️ Todas las salidas deben tener "Descripción":\n\n• '+faltaObs.join('\n• ')+'\n\nPor favor complétalos antes de guardar.');
     return;
   }
   const errores=validarConflictos(dayData);
