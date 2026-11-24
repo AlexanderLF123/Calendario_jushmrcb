@@ -606,6 +606,30 @@ body::after{
 #comisionesPanel.active-tab {
   display: flex;
 }
+
+/* ===================== RED HIDRÁULICA ===================== */
+#redHidraulicaPanel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--bg);
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+#redHidraulicaPanel.active-tab {
+  display: flex;
+}
+.red-iframe {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fafaf9;
+  box-shadow: 0 2px 10px var(--shadow);
+}
 .com-toolbar {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1092,9 +1116,10 @@ document.getElementById('waterDrop').addEventListener('click', function(){
   </div>
   <div class="hbtns">
     
-    <button class="btn btn-ghost btn-sm main-tab-btn active" id="btnTabCal" onclick="switchMainTab('cal')">📅 Calendario</button>
-    <button class="btn btn-amber btn-sm main-tab-btn" id="btnTabExp" onclick="switchMainTab('exp')">📁 Expedientes</button>
+    <button class="btn btn-amber btn-sm main-tab-btn active" id="btnTabCal" onclick="switchMainTab('cal')">📅 Calendario</button>
+    <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabExp" onclick="switchMainTab('exp')">📁 Expedientes</button>
     <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabCom" onclick="switchMainTab('com')">📋 Cronograma de Actividades</button>
+    <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabRed" onclick="switchMainTab('red')">🌊 Red Hidráulica</button>
     <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
     <button class="btn btn-ghost btn-sm" onclick="openModal()">⚙️ Conductores</button>
     <button class="btn btn-ghost btn-sm" onclick="openReuniones()">📋 Reuniones</button>
@@ -1328,6 +1353,11 @@ document.getElementById('waterDrop').addEventListener('click', function(){
       <!-- Metricas -->
     </div>
   </div>
+</div>
+
+<!-- PANEL RED HIDRÁULICA -->
+<div id="redHidraulicaPanel">
+  <iframe src="red-hidraulica.html" class="red-iframe" title="Red Hidráulica y Sectoristas JUSHMRCB"></iframe>
 </div>
 
 <div class="main-area">
@@ -3614,17 +3644,21 @@ function switchMainTab(tab) {
   const calArea = document.querySelector('.main-area');
   const expArea = document.getElementById('expedientesPanel');
   const comArea = document.getElementById('comisionesPanel');
+  const redArea = document.getElementById('redHidraulicaPanel');
   const btnCal = document.getElementById('btnTabCal');
   const btnExp = document.getElementById('btnTabExp');
   const btnCom = document.getElementById('btnTabCom');
+  const btnRed = document.getElementById('btnTabRed');
 
   calArea.style.display = 'none';
   if (expArea) expArea.classList.remove('active-tab');
   if (comArea) comArea.classList.remove('active-tab');
+  if (redArea) redArea.classList.remove('active-tab');
 
   if (btnCal) btnCal.className = 'btn btn-ghost btn-sm main-tab-btn';
   if (btnExp) btnExp.className = 'btn btn-ghost btn-sm main-tab-btn';
   if (btnCom) btnCom.className = 'btn btn-ghost btn-sm main-tab-btn';
+  if (btnRed) btnRed.className = 'btn btn-ghost btn-sm main-tab-btn';
 
   if (tab === 'exp') {
     if (expArea) expArea.classList.add('active-tab');
@@ -3634,6 +3668,9 @@ function switchMainTab(tab) {
     if (comArea) comArea.classList.add('active-tab');
     if (btnCom) btnCom.className = 'btn btn-amber btn-sm main-tab-btn active';
     renderComisionesUsuarios();
+  } else if (tab === 'red') {
+    if (redArea) redArea.classList.add('active-tab');
+    if (btnRed) btnRed.className = 'btn btn-amber btn-sm main-tab-btn active';
   } else {
     calArea.style.display = '';
     if (btnCal) btnCal.className = 'btn btn-amber btn-sm main-tab-btn active';

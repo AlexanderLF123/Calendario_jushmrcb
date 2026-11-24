@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infraestructura Hidráulica según Comisión</title>
+  <style>html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fafaf9; }</style>
+</head>
+<body style="margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fafaf9;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+
+<!-- ===== COPIA DESDE AQUÍ ===== -->
+<div id="dg">
+  <div class="dg-bar">
+    <input id="dg-q" type="search" placeholder="Buscar comisión, CD o lateral…">
+    <button id="dg-exp">Expandir todo</button>
+    <button id="dg-col">Contraer</button>
+    <button id="dg-fit">Centrar</button>
+    <button id="dg-panel-btn" class="dg-btn-highlight" title="Ver oficinas, horarios y sectoristas">👤 Sectoristas & Horarios</button>
+    <div class="dg-legend">
+      <span class="lg-title">Jerarquía:</span>
+      <span class="lg-item"><span class="lg-dot" style="background:#ea580c"></span>CD / CA</span>
+      <span class="lg-item"><span class="lg-dot" style="background:#dc2626"></span>L1 (1° Orden)</span>
+      <span class="lg-item"><span class="lg-dot" style="background:#2563eb"></span>L2 (2° Orden)</span>
+      <span class="lg-item"><span class="lg-dot" style="background:#059669"></span>L3 (3° Orden)</span>
+      <span class="lg-item"><span class="lg-dot" style="background:#7c3aed"></span>L4 (4° Orden)</span>
+      <span class="lg-item"><span class="lg-dot" style="background:#0d9488"></span>L5 (5° Orden)</span>
+    </div>
+  </div>
+  <svg id="dg-svg"><g id="dg-w"><g id="dg-l"></g><g id="dg-n"></g></g></svg>
+  <div class="dg-hint">Clic en nodo para desplegar · Arrastra para mover · Rueda para zoom · Pasa el cursor para ver datos técnicos</div>
+
+  <!-- Panel lateral desplegable (Drawer compacto que no ocupa espacio fijo) -->
+  <aside id="dg-drawer" class="dg-drawer">
+    <div class="dg-drawer-header">
+      <div class="dg-drawer-title">
+        <span style="font-size:16px">🏢</span>
+        <div>
+          <h4 style="margin:0;font-size:13.5px;color:#0f172a;font-weight:700">Oficinas y Sectoristas</h4>
+          <small style="color:#64748b;font-size:10.5px">Comisiones de Usuarios JUSHMRCB</small>
+        </div>
+      </div>
+      <button id="dg-drawer-close" title="Cerrar panel">✕</button>
+    </div>
+    <div class="dg-drawer-body" id="dg-drawer-list"></div>
+  </aside>
+</div>
+
+<style>
+#dg{position:relative;width:100%;height:100%;background:#fafaf9;border:none;border-radius:0;overflow:hidden;box-shadow:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+#dg .dg-bar{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#dg input{flex:1;min-width:180px;max-width:280px;padding:8px 14px;border:1px solid #cbd5e1;border-radius:20px;font-size:13px;background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+#dg input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+#dg button{padding:8px 14px;border:1px solid #cbd5e1;border-radius:20px;background:#fff;font-size:13px;font-weight:500;color:#334155;cursor:pointer;transition:all .2s}
+#dg button:hover{background:#f1f5f9;border-color:#94a3b8}
+#dg .dg-legend{display:flex;gap:10px;align-items:center;padding:5px 12px;background:rgba(255,255,255,0.92);backdrop-filter:blur(4px);border:1px solid #cbd5e1;border-radius:20px;font-size:11px;color:#475569;margin-left:auto;flex-wrap:wrap}
+#dg .lg-title{font-weight:700;color:#1e293b;margin-right:2px}
+#dg .lg-item{display:flex;align-items:center;gap:4px}
+#dg .lg-dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+#dg svg{width:100%;height:100%;cursor:grab;touch-action:none}
+#dg svg:active{cursor:grabbing}
+#dg .dg-hint{position:absolute;bottom:8px;left:12px;font-size:11px;color:#64748b;background:rgba(255,255,255,0.85);padding:3px 8px;border-radius:6px;pointer-events:none}
+#dg .nd{cursor:pointer;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .3s}
+#dg.searching .nd:not(.hit){opacity:0.32}
+#dg.searching .lk{opacity:0.25}
+#dg .nd rect.main-box{transition:stroke .2s,filter .2s}
+#dg .nd:hover rect.main-box{filter:brightness(0.97)}
+#dg .nd.hit rect.main-box{stroke:#ea580c!important;stroke-width:3.5!important;filter:drop-shadow(0 0 8px rgba(234,88,12,0.85))!important;animation:dg-pulse 1.4s ease-in-out infinite alternate}
+@keyframes dg-pulse{from{filter:drop-shadow(0 0 4px rgba(234,88,12,0.5))}to{filter:drop-shadow(0 0 12px rgba(234,88,12,0.95))}}
+#dg .nd text{pointer-events:none;user-select:none}
+#dg .bd{font-size:9.5px;font-weight:700;letter-spacing:0.3px}
+#dg .lk{fill:none;stroke-width:1.8;transition:d .35s cubic-bezier(.4,0,.2,1),opacity .3s;stroke-linecap:round}
+
+/* Botón destacado de personal */
+.dg-btn-highlight{background:#eff6ff!important;border-color:#93c5fd!important;color:#1d4ed8!important;display:inline-flex;align-items:center;gap:5px}
+.dg-btn-highlight:hover{background:#dbeafe!important;border-color:#60a5fa!important}
+
+/* Drawer / Panel lateral deslizable (no ocupa espacio fijo) */
+#dg .dg-drawer{
+  position:absolute;
+  top:0;
+  right:0;
+  bottom:0;
+  width:320px;
+  max-width:85vw;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(8px);
+  border-left:1px solid #e2e8f0;
+  box-shadow:-4px 0 24px rgba(0,0,0,0.09);
+  z-index:10;
+  transform:translateX(100%);
+  transition:transform 0.35s cubic-bezier(0.2,0.9,0.3,1);
+  display:flex;
+  flex-direction:column;
+}
+#dg .dg-drawer.open{transform:translateX(0)}
+.dg-drawer-header{
+  padding:12px 16px;
+  border-bottom:1px solid #e2e8f0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:#fff;
+}
+.dg-drawer-title{display:flex;align-items:center;gap:8px}
+#dg-drawer-close{
+  border:none;
+  background:#f1f5f9;
+  border-radius:50%;
+  width:28px;
+  height:28px;
+  font-size:13px;
+  color:#64748b;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .2s;
+  padding:0;
+}
+#dg-drawer-close:hover{background:#e2e8f0;color:#0f172a}
+.dg-drawer-body{
+  flex:1;
+  overflow-y:auto;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+.dg-card{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:10px;
+  padding:10px 12px;
+  transition:all .2s;
+  cursor:pointer;
+  box-shadow:0 1px 3px rgba(0,0,0,0.03);
+}
+.dg-card:hover{
+  border-color:#3b82f6;
+  box-shadow:0 3px 10px rgba(59,130,246,0.12);
+  transform:translateY(-1px);
+}
+.dg-card-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:5px;
+}
+.dg-card-name{
+  font-size:12.5px;
+  font-weight:700;
+  color:#0f4c81;
+}
+.dg-card-badge{
+  font-size:10px;
+  background:#e0f2fe;
+  color:#0369a1;
+  padding:2px 6px;
+  border-radius:4px;
+  font-weight:600;
+}
+.dg-card-row{
+  display:flex;
+  align-items:flex-start;
+  gap:6px;
+  font-size:11px;
+  color:#475569;
+  margin-top:4px;
+  line-height:1.35;
+}
+.dg-card-icon{font-size:12px;opacity:0.85;flex-shrink:0;margin-top:1px}
+.dg-tags{display:flex;flex-wrap:wrap;gap:4px}
+.dg-tag{
+  background:#f1f5f9;
+  color:#334155;
+  border-radius:4px;
+  padding:1px 6px;
+  font-size:10.5px;
+  font-weight:600;
+  border:1px solid #e2e8f0;
+}
+</style>
+
+<script>
+(function(){
+// Datos de infraestructura hidráulica
+const DATA={
+  "Nieveria": {
+    "CANAL ADUCTOR > CD NIEVERIA": [
+      "PORRAS II",
+      "FRANJA MARGINAL",
+      "PORRAS I",
+      "PICHULI|SOTOMAYOR",
+      "CHAMBALA",
+      "FAME",
+      "CAJAMARQUILLA",
+      "ROSAS",
+      "BONIFACIO",
+      "PALOMINO|VILCHEZ",
+      "PALOMINO|BENDEZU",
+      "CHIRIMOYO",
+      "GALLEGOS|POSTA",
+      "CAPCHA"
+    ]
+  },
+  "Surco Huatica": {
+    "CD SURCO": [
+      "VALDIVIEZO",
+      "MONTEFIORI",
+      "ABRAHAM LINCOLN",
+      "HIPODROMO",
+      "MATAZANGO|MATAZANGO I",
+      "SAN LUIS",
+      "LINCE|LINCE II",
+      "LINCE|LINCE I|LINCE III",
+      "SAN ISIDRO",
+      "MIRAFLORES|MIRAFLORES I",
+      "MIRAFLORES|DOMINGO ORUÉ",
+      "MIRAFLORES|AVELINO CACERES",
+      "SURCO I|CAMINOS DEL INCA",
+      "INTIHUATANA",
+      "SURCO II|SURCO II - I|SURCO II - I - I",
+      "SURCO III"
+    ],
+    "CD HUATICA": [
+      "ICHIKI",
+      "PLACIDO JIMENEZ",
+      "PUEBLO LIBRE|FERNANDINI",
+      "SALAVERRY|CIRCULO MILITAR",
+      "JAVIER PRADO"
+    ]
+  },
+  "Ricardo Palma": {
+    "CD SOL Y CAMPO": [],
+    "CD UCHUYPUMA": [],
+    "CD HUACHINGA": [
+      "VIUDA DE JULCA|MOLINA",
+      "VIUDA DE JULCA|MUÑOZ",
+      "VIUDA DE JULCA|PUCARA",
+      "VIUDA DE JULCA|LLOCLLA",
+      "VIUDA DE JULCA|MAGDA",
+      "VIUDA DE JULCA|VILCALLAURI"
+    ],
+    "CD MANANTIAL CUPICHE": [],
+    "CD SANTA ANA LA RONDA": [
+      "POLANCO",
+      "HERMANOS GODOY",
+      "MUNICIPIO",
+      "MARIACA",
+      "CHAVEZ"
+    ],
+    "CD MEDIO SANTA ANA": [],
+    "CD HUAYARINGA": [
+      "CARBAJAL",
+      "ESPINOZA",
+      "ARRAYANES|FLORES",
+      "ABOGADOS|CARBONEL",
+      "CLUB REAL|ZEVALLOS",
+      "CLUB REAL|MUNICIPIO I",
+      "CLUB REAL|MUNICIPIO II"
+    ]
+  },
+  "Ñaña": {
+    "CD ALTO HUAMPANI": [
+      "LAS VEGAS|LAS VEGAS",
+      "LOS GIRASOLES I",
+      "LOS GIRASOLES II",
+      "CORZO",
+      "ABASTOS"
+    ],
+    "CD ÑAÑA MEDIO": [
+      "SANCHEZ",
+      "ROMERO",
+      "RISSO",
+      "OSMA|GARCIA I",
+      "DEMACER",
+      "SUCESIÓN"
+    ],
+    "CD ÑAÑA BAJO": [
+      "ENTEL",
+      "COGOLLO",
+      "C. REHABILITACION",
+      "MONTES|SALECIANOS",
+      "MONTES|MONTES",
+      "MONTES|CANTERA"
+    ]
+  },
+  "La Estrella": {
+    "CD CASTRILLEJO": [
+      "ANDRES AVELINO|CASTAÑEDA|URBINA"
+    ],
+    "CD LA ESTRELLA": [
+      "CARRIZALES",
+      "EL DESCANSO|MURUHUAY",
+      "EL DESCANSO|CHACON",
+      "EL DESCANSO|SANTA CRUZ",
+      "CHAVEZ",
+      "GILBONIO",
+      "ALCANFORES|BERROCAL",
+      "SANTA ELENA",
+      "GALVEZ",
+      "GRAU|PRIMAVERA"
+    ]
+  },
+  "Huachipa": {
+    "CD HUACHIPA": [
+      "PRIALE I|SANTA MARIA",
+      "PRIALE I|DE LA CRUZ",
+      "PRIALE I|CHICHARRON",
+      "PRIALE I|CIRCUNVALACION I - AGUILAS - CISNES|CIRCUNVALACION I - DERIVACIÓN|ACACIAS|HUACHIPA II - CEDROS",
+      "PRIALE I|CIRCUNVALACION I - AGUILAS - CISNES|CIRCUNVALACION I - DERIVACIÓN|ACACIAS|ARCHIPIELAGO I - QUINTA - LAURELES",
+      "PRIALE I|CIRCUNVALACION I - AGUILAS - CISNES|CIRCUNVALACION I - DERIVACIÓN|ACACIAS|ARCHIPIELAGO II",
+      "PRIALE I|CIRCUNVALACION I - AGUILAS - CISNES|LAURELES-TOKIO",
+      "PRIALE I|CIRCUNVALACION I - AGUILAS - CISNES|JACARANDAS",
+      "PRIALE I|CIRCUNVALACION II|HUACHIPA I",
+      "PRIALE I|CIRCUNVALACION II|EL POLO I",
+      "PRIALE I|CIRCUNVALACION II|EL POLO II",
+      "CAPITANA BAJA",
+      "TORRES I|TORRES II",
+      "TORRES I|MAPFRE",
+      "TORRES I|HUACHIPA - MORERAS",
+      "TORRES I|PALMERAS",
+      "TORRES I|QUINTA I",
+      "TORRES I|QUINTA II - POLO - HALCONES",
+      "CAPITANA",
+      "SAN LUIS I|SAN LUIS II",
+      "HALCONES",
+      "ANGELES|PARAISO",
+      "HUARANGO"
+    ]
+  },
+  "Chosica": {
+    "CD SANTA EULALIA": [],
+    "CD CHOSICA": [
+      "CANTUTITA|CARRILLO GIL|GAMARRA",
+      "LOS PALMOS|TAPIA TAPIA|DULANTO",
+      "SEGUNDA TRANSVERSAL|HIPPAUF|CHAVEZ SILVA",
+      "PRIMERA TRANSVERSAL|EL BOSQUE",
+      "HINOSTROZA|MUNICIPALIDAD"
+    ]
+  },
+  "Chacrasana": {
+    "CD SAN JOSE > CD ENEL": [
+      "SOLEA|CONTADORES|ZARATE",
+      "SANTA ROSA|LOS JAZMINES|LAS FLORES II",
+      "BETANIA|SANTA MARIA|LAS FLORES I",
+      "LOS ROSALES|CETEMIN I|CETEMIN II"
+    ],
+    "CP CHACRASANA": [
+      "ADERTEL|DERIVACION AOPIP",
+      "BOSQUE|SAMAÑA",
+      "AOPIP|LA GRUTA",
+      "SAN ALBERTO|LA UNION",
+      "SAN ALBERTO II|SAN ALBERTO I",
+      "SAN CAMILO"
+    ]
+  },
+  "Chaclacayo": {
+    "CD SANTA INES": [
+      "LA CAÑADA|LAS ACACIAS 2"
+    ],
+    "CD LOS ÁNGELES": [
+      "LAS BEGONIAS|IRIGOYEN",
+      "NAVIDAD|FLORESTA",
+      "LAS ACACIAS 1",
+      "LAS MERCEDES",
+      "LAURELES 1",
+      "LAURELES 2",
+      "EL SOL 1",
+      "EL SOL 2",
+      "SAN JOSE",
+      "LOS FRESNOS",
+      "VICTORIA",
+      "LOS MOLLES"
+    ]
+  },
+  "Carapongo": {
+    "CD CARAPONGO": [
+      "CONDORI",
+      "CARAPONGUILLO|EXTRABAJADORES|MENENDEZ|LIMAYMANTA|GODOY",
+      "CARAPONGUILLO|EXTRABAJADORES|MENENDEZ|LIMAYMANTA|ALFONSO",
+      "CARAPONGUILLO|MARCELINO|QUINTO",
+      "LAS CAMELIAS|CAVANI",
+      "CAVA|SUMA",
+      "BUENDIA|LOS PINOS",
+      "BUENDIA|VICUÑA",
+      "BUENDIA|FELIX",
+      "BUENDIA|TORIBIO",
+      "PRIMAVERA|FLORES",
+      "CAROZZI|BARRERA|SOSA",
+      "CAROZZI|BARRERA|ROA",
+      "ROJAS|ALVAREZ",
+      "ROJAS|JULIAN",
+      "ROJAS|DOS DE MAYO",
+      "ROJAS|SINCHE",
+      "ROJAS|VIQUEZ",
+      "ROJAS|PORTILLO"
+    ]
+  },
+  "Ate": {
+    "CD ATE": [
+      "SANTA MARTHA|BERMUDEZ|FORESTALES|MUNICIPIO",
+      "SANTA MARTHA|FERROCARRIL",
+      "BARBADILLO",
+      "METROPOLITANA|VIRREYES|BELLO HORIZONTE",
+      "CRISTAL",
+      "SEPARADORA|SEPARADORA|WONG I",
+      "SEPARADORA|FONTANA|WONG II",
+      "LA PLANICIE > CD LA PLANICIE",
+      "LA PLANICIE|ALIVIADERO PLANICIE|BELAIR",
+      "LA PLANICIE|ALIVIADERO PLANICIE|CALLE 07",
+      "ESCUELA DE EQUITACION|CALLE 3|CALLE 09",
+      "UNIVERSIDAD AGRARIA|LA RINCONADA BAJA|PRIMAVERA",
+      "CERRO CAMACHO|LAS HARAS",
+      "ENCALADA|AGRARIA",
+      "DERBY|CORTIJO",
+      "DERBY|EL POLO",
+      "DERBY|PRIMAVERA",
+      "DERBY|AOPIP"
+    ]
+  },
+  "Parca": {
+    "CD PARCA": [
+      "PARCA ALTA|ALVARADO|ZAVALA",
+      "PARCA BAJA|BONAZZI|TARITO",
+      "CARLOS MASSA|ROSSELL",
+      "RAMIREZ",
+      "POTTER",
+      "LORET",
+      "ANKELE",
+      "DUSSALLEU",
+      "SARRIA",
+      "OLGA MASSA II"
+    ]
+  }
+};
+
+// Datos técnicos del inventario hidráulico oficial (según planos JUSHR)
+const TECH_INFO = {
+  // NIEVERIA
+  "CANAL ADUCTOR": { prog: "0+000", L: "-", Q: "-", U: "-", A: "-" },
+  "CD NIEVERIA": { prog: "0+000 a 10+699", L: "11.627 km", Q: "0.20 m³/s", U: "62 predios", A: "63.96 ha" },
+  "PORRAS II": { prog: "0+970", L: "0.271 km", Q: "0.05 m³/s", U: "8 predios", A: "2.17 ha" },
+  "FRANJA MARGINAL": { prog: "01+060", L: "2.77 km", Q: "-", U: "-", A: "-" },
+  "PORRAS I": { prog: "04+010", L: "1.316 km", Q: "-", U: "3 predios", A: "0.544 ha" },
+  "PICHULI": { prog: "06+060", L: "0.562 km", Q: "0.03 m³/s", U: "1 predio", A: "0.50 ha" },
+  "SOTOMAYOR": { prog: "0+209 (Pichuli)", L: "0.113 km", Q: "0.01 m³/s", U: "1 predio", A: "0.25 ha" },
+  "CHAMBALA": { prog: "07+795", L: "0.944 km", Q: "0.01 m³/s", U: "1 predio", A: "0.21 ha" },
+  "FAME": { prog: "07+815", L: "0.994 km", Q: "0.01 m³/s", U: "2 predios", A: "0.89 ha" },
+  "CAJAMARQUILLA": { prog: "07+817", L: "0.837 km", Q: "0.02 m³/s", U: "1 predio", A: "0.10 ha" },
+  "ROSAS": { prog: "08+840", L: "0.679 km", Q: "0.02 m³/s", U: "1 predio", A: "0.34 ha" },
+  "BONIFACIO": { prog: "09+103", L: "0.790 km", Q: "0.05 m³/s", U: "4 predios", A: "2.07 ha" },
+  "PALOMINO": { prog: "09+103", L: "0.383 km", Q: "0.03 m³/s", U: "2 predios", A: "1.62 ha" },
+  "VILCHEZ": { prog: "0+209 (Palomino)", L: "0.013 km", Q: "0.04 m³/s", U: "2 predios", A: "3.30 ha" },
+  "BENDEZU": { prog: "0+386 (Palomino)", L: "0.487 km", Q: "0.02 m³/s", U: "3 predios", A: "0.86 ha" },
+  "CHIRIMOYO": { prog: "09+519", L: "0.442 km", Q: "0.04 m³/s", U: "1 predio", A: "0.67 ha" },
+  "GALLEGOS": { prog: "09+780", L: "0.323 km", Q: "0.05 m³/s", U: "4 predios", A: "0.64 ha" },
+  "POSTA": { prog: "0+325 (Gallegos)", L: "0.805 km", Q: "0.02 m³/s", U: "1 predio", A: "0.15 ha" },
+  "CAPCHA": { prog: "10+699", L: "0.932 km", Q: "0.04 m³/s", U: "3 predios", A: "2.85 ha" },
+
+  // SURCO - HUATICA
+  "CD SURCO": { prog: "Río Rímac 25+100", L: "29,210.40 m", Q: "0.95 m³/s", U: "46 predios", A: "952.034 ha" },
+  "VALDIVIEZO": { prog: "6+510", L: "2,399.05 m", Q: "0.006 m³/s", U: "1 predio", A: "6.020 ha" },
+  "MONTEFIORI": { prog: "7+810", L: "4,480.04 m", Q: "0.014 m³/s", U: "5 predios", A: "22.140 ha" },
+  "ABRAHAM LINCOLN": { prog: "7+980", L: "981.83 m", Q: "0.003 m³/s", U: "5 predios", A: "5.550 ha" },
+  "HIPODROMO": { prog: "9+330", L: "1,254.41 m", Q: "0.064 m³/s", U: "4 predios", A: "55.820 ha" },
+  "MATAZANGO": { prog: "10+200", L: "2,054.72 m", Q: "0.053 m³/s", U: "5 predios", A: "50.190 ha" },
+  "MATAZANGO I": { prog: "1+800 (Matazango)", L: "1,645.81 m", Q: "0.053 m³/s", U: "2 predios", A: "16.530 ha" },
+  "SAN LUIS": { prog: "10+700", L: "5,080.31 m", Q: "0.020 m³/s", U: "4 predios", A: "65.020 ha" },
+  "LINCE": { prog: "11+000", L: "10,820.28 m", Q: "0.087 m³/s", U: "8 predios", A: "244.190 ha" },
+  "LINCE II": { prog: "5+830 (Lince)", L: "2,096.91 m", Q: "0.005 m³/s", U: "2 predios", A: "68.970 ha" },
+  "LINCE I": { prog: "6+180 (Lince)", L: "3,424.30 m", Q: "0.010 m³/s", U: "1 predio", A: "62.500 ha" },
+  "LINCE III": { prog: "0+400 (Lince I)", L: "2,411.78 m", Q: "0.010 m³/s", U: "1 predio", A: "62.500 ha" },
+  "SAN ISIDRO": { prog: "11+200", L: "355.42 m", Q: "0.040 m³/s", U: "1 predio", A: "8.280 ha" },
+  "MIRAFLORES": { prog: "12+100", L: "5,961.06 m", Q: "0.130 m³/s", U: "3 predios", A: "126.160 ha" },
+  "MIRAFLORES I": { prog: "2+120 (Miraflores)", L: "1,274.64 m", Q: "0.027 m³/s", U: "2 predios", A: "34.240 ha" },
+  "DOMINGO ORUÉ": { prog: "3+070 (Miraflores)", L: "6,271.73 m", Q: "0.130 m³/s", U: "1 predio", A: "2.800 ha" },
+  "AVELINO CACERES": { prog: "4+320 (Miraflores)", L: "1,966.94 m", Q: "0.020 m³/s", U: "1 predio", A: "4.200 ha" },
+  "SURCO I": { prog: "14+157", L: "8,177.52 m", Q: "0.030 m³/s", U: "3 predios", A: "93.240 ha" },
+  "CAMINOS DEL INCA": { prog: "1+240 (Surco I)", L: "1,719.84 m", Q: "0.030 m³/s", U: "2 predios", A: "28.660 ha" },
+  "INTIHUATANA": { prog: "14+450", L: "379.02 m", Q: "0.003 m³/s", U: "2 predios", A: "4.450 ha" },
+  "SURCO II": { prog: "14+590", L: "4,412.74 m", Q: "0.027 m³/s", U: "2 predios", A: "46.190 ha" },
+  "SURCO II - I": { prog: "2+200 (Surco II)", L: "2,459.46 m", Q: "0.027 m³/s", U: "2 predios", A: "14.830 ha" },
+  "SURCO II - I - I": { prog: "1+300 (Surco II-I)", L: "1,724.66 m", Q: "0.020 m³/s", U: "1 predio", A: "4.130 ha" },
+  "SURCO III": { prog: "16+071", L: "1,381.55 m", Q: "0.032 m³/s", U: "2 predios", A: "13.044 ha" },
+  "CD HUATICA": { prog: "Planta Sedapal Atarjea", L: "16,051 m", Q: "0.060 m³/s", U: "19 predios", A: "116.770 ha" },
+  "ICHIKI": { prog: "0+307", L: "712.45 m", Q: "0.020 m³/s", U: "2 predios", A: "1.350 ha" },
+  "PLACIDO JIMENEZ": { prog: "2+383", L: "232.78 m", Q: "0.006 m³/s", U: "1 predio", A: "6.830 ha" },
+  "PUEBLO LIBRE": { prog: "7+463", L: "4,432.19 m", Q: "0.013 m³/s", U: "4 predios", A: "16.630 ha" },
+  "FERNANDINI": { prog: "2+450 (Pueblo Libre)", L: "2,753.51 m", Q: "0.013 m³/s", U: "1 predio", A: "3.260 ha" },
+  "SALAVERRY": { prog: "10+100", L: "3,983.31 m", Q: "0.002 m³/s", U: "2 predios", A: "32.000 ha" },
+  "CIRCULO MILITAR": { prog: "0+079 (Salaverry)", L: "3,843.87 m", Q: "0.002 m³/s", U: "2 predios", A: "14.000 ha" },
+  "JAVIER PRADO": { prog: "14+300", L: "544.43 m", Q: "0.003 m³/s", U: "0 predios", A: "0 ha" },
+
+  // RICARDO PALMA
+  "CD SOL Y CAMPO": { prog: "Río Rímac 67+500", L: "1,604 m", Q: "0.05 m³/s", U: "3 predios", A: "2.010 ha" },
+  "CD UCHUYPUMA": { prog: "Río Rímac 66+800", L: "731 m", Q: "0.02 m³/s", U: "1 predio", A: "0.50 ha" },
+  "CD HUACHINGA": { prog: "Río Rímac 66+200", L: "3,619 m", Q: "0.35 m³/s", U: "41 predios", A: "51.731 ha" },
+  "VIUDA DE JULCA": { prog: "CD Huachinga", L: "3,071 m", Q: "0.06 m³/s", U: "33 predios", A: "30.815 ha" },
+  "MOLINA": { prog: "2+292 (Viuda de Julca)", L: "333 m", Q: "0.03 m³/s", U: "3 predios", A: "2.451 ha" },
+  "MUÑOZ": { prog: "2+340 (Viuda de Julca)", L: "131 m", Q: "0.03 m³/s", U: "2 predios", A: "1.621 ha" },
+  "PUCARA": { prog: "2+480 (Viuda de Julca)", L: "304 m", Q: "0.03 m³/s", U: "6 predios", A: "3.693 ha" },
+  "LLOCLLA": { prog: "2+630 (Viuda de Julca)", L: "303 m", Q: "0.03 m³/s", U: "3 predios", A: "2.674 ha" },
+  "MAGDA": { prog: "2+990 (Viuda de Julca)", L: "79 m", Q: "0.02 m³/s", U: "2 predios", A: "0.10 ha" },
+  "VILCALLAURI": { prog: "3+030 (Viuda de Julca)", L: "470 m", Q: "0.01 m³/s", U: "2 predios", A: "0.83 ha" },
+  "CD MANANTIAL CUPICHE": { prog: "Manantial Cupiche", L: "1,688 m", Q: "0.05 m³/s", U: "6 predios", A: "6.948 ha" },
+  "CD SANTA ANA LA RONDA": { prog: "Río Rímac 63+300", L: "9,983 m", Q: "0.25 m³/s", U: "101 predios", A: "95.463 ha" },
+  "POLANCO": { prog: "0+760", L: "255 m", Q: "0.02 m³/s", U: "3 predios", A: "0.730 ha" },
+  "HERMANOS GODOY": { prog: "1+400", L: "218 m", Q: "0.02 m³/s", U: "4 predios", A: "0.345 ha" },
+  "MUNICIPIO": { prog: "1+450", L: "347 m", Q: "0.02 m³/s", U: "2 predios", A: "0.20 ha" },
+  "MARIACA": { prog: "8+280", L: "397 m", Q: "0.03 m³/s", U: "5 predios", A: "1.042 ha" },
+  "CHAVEZ": { prog: "8+880", L: "402 m", Q: "0.03 m³/s", U: "17 predios", A: "5.962 ha" },
+  "CD MEDIO SANTA ANA": { prog: "Río Rímac 62+900", L: "3,804 m", Q: "0.06 m³/s", U: "21 predios", A: "25.83 ha" },
+  "CD HUAYARINGA": { prog: "Manantial Huayaringa", L: "3,151 m", Q: "0.08 m³/s", U: "24 predios", A: "7.434 ha" },
+  "CARBAJAL": { prog: "0+947", L: "185 m", Q: "0.03 m³/s", U: "4 predios", A: "0.340 ha" },
+  "ESPINOZA": { prog: "1+360", L: "306 m", Q: "0.03 m³/s", U: "5 predios", A: "0.975 ha" },
+  "ARRAYANES": { prog: "1+320", L: "1,314 m", Q: "0.06 m³/s", U: "4 predios", A: "1.970 ha" },
+  "FLORES": { prog: "0+295 (Arrayanes)", L: "550 m", Q: "0.05 m³/s", U: "4 predios", A: "1.55 ha" },
+  "ABOGADOS": { prog: "2+760", L: "608 m", Q: "0.02 m³/s", U: "6 predios", A: "2.140 ha" },
+  "CARBONEL": { prog: "0+335 (Abogados)", L: "282 m", Q: "0.05 m³/s", U: "7 predios", A: "1.145 ha" },
+  "CLUB REAL": { prog: "3+320", L: "1,096 m", Q: "0.02 m³/s", U: "6 predios", A: "6.72 ha" },
+  "ZEVALLOS": { prog: "0+665 (Club Real)", L: "147 m", Q: "0.02 m³/s", U: "2 predios", A: "3.50 ha" },
+  "MUNICIPIO I": { prog: "0+875 (Club Real)", L: "237 m", Q: "0.05 m³/s", U: "1 predio", A: "0.50 ha" },
+  "MUNICIPIO II": { prog: "0+987 (Club Real)", L: "240 m", Q: "0.05 m³/s", U: "2 predios", A: "0.50 ha" },
+
+  // ÑAÑA
+  "CD ALTO HUAMPANI": { prog: "Río Rímac 47+400", L: "9,874 m", Q: "0.40 m³/s", U: "23 predios", A: "140.92 ha" },
+  "LAS VEGAS": { prog: "0+363", L: "191.30 m", Q: "0.10 m³/s", U: "1 predio", A: "2.00 ha" },
+  "LOS GIRASOLES I": { prog: "4+590", L: "1,435 m", Q: "0.10 m³/s", U: "2 predios", A: "36.00 ha" },
+  "LOS GIRASOLES II": { prog: "5+610", L: "1,629 m", Q: "0.10 m³/s", U: "3 predios", A: "13.36 ha" },
+  "CORZO": { prog: "6+090", L: "2,903 m", Q: "0.15 m³/s", U: "10 predios", A: "3.55 ha" },
+  "ABASTOS": { prog: "6+690", L: "1,949 m", Q: "0.15 m³/s", U: "2 predios", A: "3.38 ha" },
+  "CD ÑAÑA MEDIO": { prog: "Central Hidroeléctrica", L: "4,416 m", Q: "0.45 m³/s", U: "11 predios", A: "53.72 ha" },
+  "SANCHEZ": { prog: "2+930", L: "814 m", Q: "0.03 m³/s", U: "2 predios", A: "7.00 ha" },
+  "ROMERO": { prog: "3+200", L: "3,541 m", Q: "0.10 m³/s", U: "15 predios", A: "29.17 ha" },
+  "RISSO": { prog: "3+490", L: "837.57 m", Q: "0.10 m³/s", U: "3 predios", A: "1.24 ha" },
+  "OSMA": { prog: "3+920", L: "381 m", Q: "0.10 m³/s", U: "2 predios", A: "2.84 ha" },
+  "GARCIA I": { prog: "0+196 (Osma)", L: "110 m", Q: "0.03 m³/s", U: "1 predio", A: "1.32 ha" },
+  "DEMACER": { prog: "4+270", L: "689.87 m", Q: "0.08 m³/s", U: "3 predios", A: "5.497 ha" },
+  "SUCESIÓN": { prog: "4+580", L: "344 m", Q: "0.08 m³/s", U: "2 predios", A: "2.76 ha" },
+  "CD ÑAÑA BAJO": { prog: "Río Rímac 41+200", L: "5,593 m", Q: "0.20 m³/s", U: "37 predios", A: "28.42 ha" },
+  "ENTEL": { prog: "2+940", L: "966 m", Q: "0.10 m³/s", U: "2 predios", A: "1.93 ha" },
+  "COGOLLO": { prog: "3+390", L: "2,144 m", Q: "0.10 m³/s", U: "5 predios", A: "28.00 ha" },
+  "C. REHABILITACION": { prog: "3+560", L: "944 m", Q: "0.08 m³/s", U: "5 predios", A: "4.10 ha" },
+  "MONTES": { prog: "4+030", L: "720 m", Q: "0.08 m³/s", U: "3 predios", A: "3.82 ha" },
+  "SALECIANOS": { prog: "0+298 (Montes)", L: "415 m", Q: "0.05 m³/s", U: "1 predio", A: "0.75 ha" },
+  "CANTERA": { prog: "0+449 (Montes)", L: "693 m", Q: "0.05 m³/s", U: "2 predios", A: "0 ha" },
+
+  // LA ESTRELLA
+  "CD CASTRILLEJO": { prog: "Río Rímac 41+050", L: "7,558 m", Q: "0.40 m³/s", U: "10 predios", A: "24.65 ha" },
+  "ANDRES AVELINO": { prog: "CD Castrillejo", L: "757 m", Q: "0.085 m³/s", U: "2 predios", A: "0.11 ha" },
+  "CASTAÑEDA": { prog: "0+320 (Andres Avelino)", L: "347 m", Q: "0.080 m³/s", U: "2 predios", A: "0.11 ha" },
+  "URBINA": { prog: "01+430 (Castañeda)", L: "346 m", Q: "0.050 m³/s", U: "2 predios", A: "0.91 ha" },
+  "CD LA ESTRELLA": { prog: "Río Rímac 39+800", L: "12,543 m", Q: "0.50 m³/s", U: "55 predios", A: "83.52 ha" },
+  "CARRIZALES": { prog: "01+615", L: "2,341 m", Q: "0.100 m³/s", U: "4 predios", A: "2.55 ha" },
+  "EL DESCANSO": { prog: "03+170", L: "3,007 m", Q: "0.100 m³/s", U: "12 predios", A: "2.611 ha" },
+  "MURUHUAY": { prog: "0+788 (El Descanso)", L: "381 m", Q: "0.050 m³/s", U: "0 predios", A: "0 ha" },
+  "CHACON": { prog: "01+450 (El Descanso)", L: "785 m", Q: "0.050 m³/s", U: "1 predio", A: "0.25 ha" },
+  "SANTA CRUZ": { prog: "01+690 (El Descanso)", L: "888 m", Q: "0.050 m³/s", U: "2 predios", A: "0.721 ha" },
+  "CHAVEZ": { prog: "04+210", L: "504 m", Q: "0.100 m³/s", U: "0 predios", A: "0 ha" },
+  "GILBONIO": { prog: "06+410", L: "1,581 m", Q: "0.100 m³/s", U: "2 predios", A: "3.60 ha" },
+  "ALCANFORES": { prog: "07+475", L: "4,095 m", Q: "0.250 m³/s", U: "12 predios", A: "6.86 ha" },
+  "BERROCAL": { prog: "0+047 (Alcanfores)", L: "184 m", Q: "0.100 m³/s", U: "0 predios", A: "0 ha" },
+  "SANTA ELENA": { prog: "08+835", L: "1,054 m", Q: "0.150 m³/s", U: "3 predios", A: "4.90 ha" },
+  "GALVEZ": { prog: "09+395", L: "306 m", Q: "0.100 m³/s", U: "2 predios", A: "1.49 ha" },
+  "GRAU": { prog: "10+150", L: "1,281 m", Q: "0.300 m³/s", U: "8 predios", A: "3.55 ha" },
+  "PRIMAVERA": { prog: "0+588 (Grau)", L: "1,737 m", Q: "0.200 m³/s", U: "5 predios", A: "1.66 ha" },
+
+  // HUACHIPA
+  "CD HUACHIPA": { prog: "Río Rímac 30+750", L: "10,184 m", Q: "1.000 m³/s", U: "114 predios", A: "177.601 ha" },
+  "PRIALE I": { prog: "0+969", L: "468 m", Q: "0.700 m³/s", U: "9 predios", A: "2.702 ha" },
+  "SANTA MARIA": { prog: "0+023 (Priale I)", L: "605 m", Q: "0.500 m³/s", U: "1 predio", A: "0.550 ha" },
+  "DE LA CRUZ": { prog: "0+081 (Priale I)", L: "92 m", Q: "0.500 m³/s", U: "7 predios", A: "1.902 ha" },
+  "CHICHARRON": { prog: "0+204 (Priale I)", L: "1,094 m", Q: "0.500 m³/s", U: "6 predios", A: "3.150 ha" },
+  "CIRCUNVALACION I - AGUILAS - CISNES": { prog: "0+385 (Priale I)", L: "5,630 m", Q: "0.500 m³/s", U: "16 predios", A: "22.790 ha" },
+  "CIRCUNVALACION I - DERIVACIÓN": { prog: "0+338", L: "103 m", Q: "0.300 m³/s", U: "1 predio", A: "3.000 ha" },
+  "ACACIAS": { prog: "0+339", L: "1,008 m", Q: "0.200 m³/s", U: "11 predios", A: "6.050 ha" },
+  "HUACHIPA II - CEDROS": { prog: "0+647 (Acacias)", L: "1,419.00 m", Q: "0.100 m³/s", U: "6 predios", A: "3.930 ha" },
+  "ARCHIPIELAGO I - QUINTA - LAURELES": { prog: "0+998 (Acacias)", L: "1,948.00 m", Q: "0.100 m³/s", U: "2 predios", A: "0.750 ha" },
+  "ARCHIPIELAGO II": { prog: "1+000 (Acacias)", L: "329.00 m", Q: "0.100 m³/s", U: "1 predio", A: "0.250 ha" },
+  "LAURELES-TOKIO": { prog: "2+710", L: "972 m", Q: "0.300 m³/s", U: "3 predios", A: "7.500 ha" },
+  "JACARANDAS": { prog: "2+940", L: "1,058 m", Q: "0.300 m³/s", U: "11 predios", A: "6.050 ha" },
+  "CIRCUNVALACION II": { prog: "0+388 (Priale I)", L: "358 m", Q: "0.500 m³/s", U: "12 predios", A: "6.750 ha" },
+  "HUACHIPA I": { prog: "1+150 (Circunvalación II)", L: "192 m", Q: "0.300 m³/s", U: "1 predio", A: "0.130 ha" },
+  "EL POLO I": { prog: "2+130 (Circunvalación II)", L: "972 m", Q: "0.300 m³/s", U: "0 predios", A: "0 ha" },
+  "EL POLO II": { prog: "2+140 (Circunvalación II)", L: "972 m", Q: "0.300 m³/s", U: "0 predios", A: "0 ha" },
+  "CAPITANA BAJA": { prog: "1+680", L: "386 m", Q: "0.700 m³/s", U: "34 predios", A: "32.690 ha" },
+  "TORRES I": { prog: "2+320", L: "1,638 m", Q: "0.700 m³/s", U: "31 predios", A: "30.670 ha" },
+  "TORRES II": { prog: "0+036 (Torres I)", L: "112 m", Q: "0.500 m³/s", U: "5 predios", A: "1.050 ha" },
+  "MAPFRE": { prog: "0+333 (Torres I)", L: "746 m", Q: "0.500 m³/s", U: "0 predios", A: "0 ha" },
+  "HUACHIPA - MORERAS": { prog: "0+946 (Torres I)", L: "1,001 m", Q: "0.500 m³/s", U: "2 predios", A: "1.600 ha" },
+  "PALMERAS": { prog: "1+420 (Torres I)", L: "664 m", Q: "0.500 m³/s", U: "2 predios", A: "0.500 ha" },
+  "QUINTA I": { prog: "1+620 (Torres I)", L: "1,241 m", Q: "0.500 m³/s", U: "5 predios", A: "2.750 ha" },
+  "QUINTA II - POLO - HALCONES": { prog: "1+640 (Torres I)", L: "1,241 m", Q: "0.500 m³/s", U: "10 predios", A: "6.320 ha" },
+  "CAPITANA": { prog: "2+420", L: "1,938 m", Q: "0.700 m³/s", U: "1 predio", A: "0.200 ha" },
+  "SAN LUIS I": { prog: "5+431", L: "603 m", Q: "0.700 m³/s", U: "8 predios", A: "11.800 ha" },
+  "SAN LUIS II": { prog: "0+194 (San Luis I)", L: "304 m", Q: "0.500 m³/s", U: "2 predios", A: "1.900 ha" },
+  "HALCONES": { prog: "5+919", L: "424 m", Q: "0.700 m³/s", U: "7 predios", A: "14.270 ha" },
+  "ANGELES": { prog: "6+471", L: "974 m", Q: "0.700 m³/s", U: "2 predios", A: "8.000 ha" },
+  "PARAISO": { prog: "0+431 (Angeles)", L: "185 m", Q: "0.500 m³/s", U: "2 predios", A: "9.800 ha" },
+  "HUARANGO": { prog: "7+000", L: "953 m", Q: "0.050 m³/s", U: "4 predios", A: "13.250 ha" },
+
+  // CHOSICA
+  "CD SANTA EULALIA": { prog: "Río Santa Eulalia 57+904", L: "134 m", Q: "0.120 m³/s", U: "0 predios", A: "0 ha" },
+  "CD CHOSICA": { prog: "Río Rímac 58+125", L: "14.901 km", Q: "0.180 m³/s", U: "121 predios", A: "185.518 ha" },
+  "CANTUTITA": { prog: "06+182", L: "1,017 m", Q: "0.100 m³/s", U: "35 predios", A: "7.912 ha" },
+  "CARRILLO GIL": { prog: "0+312 (Cantutita)", L: "220 m", Q: "0.080 m³/s", U: "2 predios", A: "0.319 ha" },
+  "GAMARRA": { prog: "0+109 (Carrillo Gil)", L: "167 m", Q: "0.040 m³/s", U: "5 predios", A: "1.605 ha" },
+  "LOS PALMOS": { prog: "09+535", L: "265 m", Q: "0.080 m³/s", U: "9 predios", A: "1.857 ha" },
+  "TAPIA TAPIA": { prog: "0+460 (Los Palmos)", L: "521 m", Q: "0.080 m³/s", U: "19 predios", A: "4.971 ha" },
+  "DULANTO": { prog: "0+269 (Tapia Tapia)", L: "64 m", Q: "0.040 m³/s", U: "3 predios", A: "0.542 ha" },
+  "SEGUNDA TRANSVERSAL": { prog: "10+840", L: "628 m", Q: "0.050 m³/s", U: "9 predios", A: "1.785 ha" },
+  "HIPPAUF": { prog: "0+194 (2da Transversal)", L: "141 m", Q: "0.060 m³/s", U: "5 predios", A: "0.797 ha" },
+  "CHAVEZ SILVA": { prog: "0+094 (Hippauf)", L: "144 m", Q: "0.040 m³/s", U: "3 predios", A: "0.43 ha" },
+  "PRIMERA TRANSVERSAL": { prog: "11+222", L: "653 m", Q: "0.080 m³/s", U: "2 predios", A: "0.181 ha" },
+  "EL BOSQUE": { prog: "0+265 (1ra Transversal)", L: "477 m", Q: "0.40 m³/s", U: "3 predios", A: "0.31 ha" },
+  "HINOSTROZA": { prog: "11+849", L: "222 m", Q: "0.080 m³/s", U: "3 predios", A: "0.321 ha" },
+  "MUNICIPALIDAD": { prog: "0+495 (Hinostroza)", L: "166 m", Q: "0.040 m³/s", U: "1 predio", A: "0.50 ha" },
+
+  // CHACRASANA
+  "CD SAN JOSE": { prog: "Moyopampa", L: "1,606 m", Q: "0.30 m³/s", U: "1 predio", A: "7.00 ha" },
+  "SOLEA": { prog: "02+230", L: "817 m", Q: "0.036 m³/s", U: "5 predios", A: "12.25 ha" },
+  "CONTADORES": { prog: "0+008 (Solea)", L: "55 m", Q: "0.02 m³/s", U: "2 predios", A: "1.20 ha" },
+  "ZARATE": { prog: "0+019 (Contadores)", L: "382 m", Q: "0.05 m³/s", U: "1 predio", A: "0.14 ha" },
+  "SANTA ROSA": { prog: "02+910", L: "558 m", Q: "0.016 m³/s", U: "6 predios", A: "0.65 ha" },
+  "LOS JAZMINES": { prog: "0+044 (Santa Rosa)", L: "701 m", Q: "0.05 m³/s", U: "3 predios", A: "0.75 ha" },
+  "LAS FLORES II": { prog: "0+072 (Los Jazmines)", L: "683 m", Q: "0.06 m³/s", U: "8 predios", A: "1.31 ha" },
+  "BETANIA": { prog: "03+120", L: "1,395 m", Q: "0.036 m³/s", U: "27 predios", A: "14.39 ha" },
+  "SANTA MARIA": { prog: "0+452 (Betania)", L: "966 m", Q: "0.08 m³/s", U: "18 predios", A: "5.44 ha" },
+  "LAS FLORES I": { prog: "0+086 (Santa Maria)", L: "336 m", Q: "0.06 m³/s", U: "2 predios", A: "0.32 ha" },
+  "LOS ROSALES": { prog: "03+937", L: "482 m", Q: "0.016 m³/s", U: "2 predios", A: "1.06 ha" },
+  "CETEMIN I": { prog: "0+050 (Los Rosales)", L: "1,219 m", Q: "0.05 m³/s", U: "8 predios", A: "7.88 ha" },
+  "CETEMIN II": { prog: "0+165 (Cetemin I)", L: "979 m", Q: "0.08 m³/s", U: "3 predios", A: "3.78 ha" },
+  "CP CHACRASANA": { prog: "04+760", L: "4,984 m", Q: "0.30 m³/s", U: "36 predios", A: "90.60 ha" },
+  "ADERTEL": { prog: "0+030", L: "1,384 m", Q: "0.15 m³/s", U: "1 predio", A: "8.00 ha" },
+  "DERIVACION AOPIP": { prog: "0+334 (Adertel)", L: "248 m", Q: "0.05 m³/s", U: "1 predio", A: "1.00 ha" },
+  "BOSQUE": { prog: "0+510", L: "738 m", Q: "0.05 m³/s", U: "1 predio", A: "2.00 ha" },
+  "SAMAÑA": { prog: "01+160 (Bosque)", L: "568 m", Q: "0.05 m³/s", U: "2 predios", A: "3.00 ha" },
+  "AOPIP": { prog: "01+360", L: "2,468 m", Q: "0.15 m³/s", U: "20 predios", A: "23.53 ha" },
+  "LA GRUTA": { prog: "01+750 (AOPIP)", L: "402 m", Q: "0.03 m³/s", U: "4 predios", A: "1.80 ha" },
+  "SAN ALBERTO": { prog: "03+500", L: "266 m", Q: "0.15 m³/s", U: "1 predio", A: "3.00 ha" },
+  "LA UNION": { prog: "01+800 (San Alberto)", L: "527 m", Q: "0.05 m³/s", U: "2 predios", A: "1.00 ha" },
+  "SAN ALBERTO II": { prog: "03+830", L: "552 m", Q: "0.05 m³/s", U: "1 predio", A: "1.50 ha" },
+  "SAN ALBERTO I": { prog: "0+049 (San Alberto II)", L: "284 m", Q: "0.05 m³/s", U: "1 predio", A: "1.50 ha" },
+  "SAN CAMILO": { prog: "04+580", L: "322 m", Q: "0.05 m³/s", U: "3 predios", A: "2.20 ha" },
+
+  // CHACLACAYO
+  "CD SANTA INES": { prog: "Río Rímac 50+300", L: "6.201 km", Q: "0.12 m³/s", U: "54 predios", A: "21.244 ha" },
+  "LA CAÑADA": { prog: "00+687", L: "1.127 km", Q: "0.08 m³/s", U: "9 predios", A: "2.310 ha" },
+  "LAS ACACIAS 2": { prog: "0+208 (La Cañada)", L: "0.161 km", Q: "0.03 m³/s", U: "1 predio", A: "0.026 ha" },
+  "CD LOS ÁNGELES": { prog: "Río Rímac 47+157", L: "4.033 km", Q: "0.07 m³/s", U: "3 predios", A: "9.827 ha" },
+  "LAS BEGONIAS": { prog: "03+095", L: "0.388 km", Q: "0.04 m³/s", U: "3 predios", A: "0.813 ha" },
+  "IRIGOYEN": { prog: "0+131 (Las Begonias)", L: "0.139 km", Q: "0.03 m³/s", U: "2 predios", A: "0.332 ha" },
+  "NAVIDAD": { prog: "03+557", L: "0.350 km", Q: "0.03 m³/s", U: "2 predios", A: "4.558 ha" },
+  "FLORESTA": { prog: "0+131 (Navidad)", L: "0.258 km", Q: "0.00 m³/s", U: "0 predios", A: "0 ha" },
+  "LAS ACACIAS 1": { prog: "03+810", L: "0.328 km", Q: "0.03 m³/s", U: "1 predio", A: "0.026 ha" },
+  "LAS MERCEDES": { prog: "04+042", L: "0.216 km", Q: "0.00 m³/s", U: "0 predios", A: "0 ha" },
+  "LAURELES 1": { prog: "04+159", L: "0.233 km", Q: "0.04 m³/s", U: "1 predio", A: "0.080 ha" },
+  "LAURELES 2": { prog: "04+171", L: "0.206 km", Q: "0.04 m³/s", U: "1 predio", A: "0.050 ha" },
+  "EL SOL 1": { prog: "04+345", L: "0.253 km", Q: "0.00 m³/s", U: "0 predios", A: "0 ha" },
+  "EL SOL 2": { prog: "04+356", L: "0.246 km", Q: "0.04 m³/s", U: "3 predios", A: "0.582 ha" },
+  "SAN JOSE": { prog: "04+405", L: "0.162 km", Q: "0.04 m³/s", U: "1 predio", A: "0.250 ha" },
+  "LOS FRESNOS": { prog: "04+498", L: "0.419 km", Q: "0.04 m³/s", U: "1 predio", A: "0.175 ha" },
+  "VICTORIA": { prog: "04+914", L: "0.490 km", Q: "0.04 m³/s", U: "2 predios", A: "0.150 ha" },
+  "LOS MOLLES": { prog: "05+252", L: "0.590 km", Q: "0.04 m³/s", U: "4 predios", A: "1.132 ha" },
+
+  // CARAPONGO
+  "CD CARAPONGO": { prog: "Río Rímac 36+500", L: "6,879 m", Q: "0.50 m³/s", U: "218 predios", A: "86.036 ha" },
+  "CONDORI": { prog: "0+725", L: "2,635 m", Q: "0.250 m³/s", U: "4 predios", A: "1.254 ha" },
+  "CARAPONGUILLO": { prog: "0+800", L: "4,337 m", Q: "0.350 m³/s", U: "48 predios", A: "18.483 ha" },
+  "EXTRABAJADORES": { prog: "3+440 (Caraponguillo)", L: "1,397 m", Q: "0.100 m³/s", U: "16 predios", A: "7.975 ha" },
+  "MENENDEZ": { prog: "0+326 (Extrabajadores)", L: "546 m", Q: "0.080 m³/s", U: "11 predios", A: "4.295 ha" },
+  "LIMAYMANTA": { prog: "0+075 (Menendez)", L: "448 m", Q: "0.080 m³/s", U: "7 predios", A: "3.160 ha" },
+  "GODOY": { prog: "0+176 (Limaymanta)", L: "134 m", Q: "0.050 m³/s", U: "2 predios", A: "1.009 ha" },
+  "ALFONSO": { prog: "0+267 (Limaymanta)", L: "103 m", Q: "0.050 m³/s", U: "2 predios", A: "0.754 ha" },
+  "MARCELINO": { prog: "4+290 (Caraponguillo)", L: "349 m", Q: "0.100 m³/s", U: "6 predios", A: "2.427 ha" },
+  "QUINTO": { prog: "0+120 (Marcelino)", L: "1,925 m", Q: "0.080 m³/s", U: "9 predios", A: "3.060 ha" },
+  "LAS CAMELIAS": { prog: "1+250", L: "1,137 m", Q: "0.200 m³/s", U: "28 predios", A: "7.497 ha" },
+  "CAVANI": { prog: "0+126 (Las Camelias)", L: "412 m", Q: "0.100 m³/s", U: "5 predios", A: "0.539 ha" },
+  "CAVA": { prog: "1+370", L: "3,508 m", Q: "0.250 m³/s", U: "56 predios", A: "21.058 ha" },
+  "SUMA": { prog: "0+607 (Cava)", L: "357 m", Q: "0.100 m³/s", U: "4 predios", A: "0.933 ha" },
+  "BUENDIA": { prog: "2+230", L: "2,394 m", Q: "0.200 m³/s", U: "39 predios", A: "12.139 ha" },
+  "LOS PINOS": { prog: "0+820 (Buendia)", L: "552 m", Q: "0.100 m³/s", U: "6 predios", A: "1.335 ha" },
+  "VICUÑA": { prog: "0+144 (Buendia)", L: "1,134 m", Q: "0.100 m³/s", U: "4 predios", A: "1.380 ha" },
+  "FELIX": { prog: "0+154 (Buendia)", L: "982 m", Q: "0.100 m³/s", U: "6 predios", A: "1.849 ha" },
+  "TORIBIO": { prog: "0+281 (Buendia)", L: "576 m", Q: "0.080 m³/s", U: "4 predios", A: "1.285 ha" },
+  "PRIMAVERA": { prog: "3+230", L: "2,002 m", Q: "0.250 m³/s", U: "10 predios", A: "1.244 ha" },
+  "FLORES": { prog: "0+068 (Primavera)", L: "2,345 m", Q: "0.200 m³/s", U: "9 predios", A: "2.378 ha" },
+  "CAROZZI": { prog: "4+900", L: "1,601 m", Q: "0.080 m³/s", U: "10 predios", A: "4.648 ha" },
+  "BARRERA": { prog: "0+737 (Carozzi)", L: "434 m", Q: "0.200 m³/s", U: "3 predios", A: "0.605 ha" },
+  "SOSA": { prog: "0+639 (Barrera)", L: "320 m", Q: "0.050 m³/s", U: "3 predios", A: "0.718 ha" },
+  "ROA": { prog: "1+040 (Barrera)", L: "620 m", Q: "0.050 m³/s", U: "1 predio", A: "0.250 ha" },
+  "ROJAS": { prog: "5+380", L: "856 m", Q: "0.300 m³/s", U: "5 predios", A: "2.500 ha" },
+  "ALVAREZ": { prog: "0+692 (Rojas)", L: "549 m", Q: "0.100 m³/s", U: "3 predios", A: "0.860 ha" },
+  "JULIAN": { prog: "1+030 (Rojas)", L: "321 m", Q: "0.100 m³/s", U: "2 predios", A: "0.630 ha" },
+  "DOS DE MAYO": { prog: "1+100 (Rojas)", L: "264 m", Q: "0.080 m³/s", U: "3 predios", A: "1.105 ha" },
+  "SINCHE": { prog: "1+260 (Rojas)", L: "659 m", Q: "0.100 m³/s", U: "15 predios", A: "6.243 ha" },
+  "VIQUEZ": { prog: "2+010 (Rojas)", L: "1,262 m", Q: "0.100 m³/s", U: "6 predios", A: "1.40 ha" },
+  "PORTILLO": { prog: "2+540 (Rojas)", L: "525 m", Q: "0.100 m³/s", U: "6 predios", A: "1.046 ha" },
+
+  // ATE
+  "CD ATE": { prog: "Río Rímac 0+000", L: "14.969 km", Q: "1.00 m³/s", U: "109 predios", A: "425.708 ha" },
+  "SANTA MARTHA": { prog: "0+193", L: "4.053 km", Q: "0.20 m³/s", U: "2 predios", A: "17.070 ha" },
+  "BERMUDEZ": { prog: "1+740 (Santa Martha)", L: "1.143 km", Q: "0.12 m³/s", U: "2 predios", A: "2.932 ha" },
+  "FORESTALES": { prog: "1+270 (Bermudez)", L: "1.781 km", Q: "0.10 m³/s", U: "1 predio", A: "6.358 ha" },
+  "MUNICIPIO": { prog: "0+350 (Forestales)", L: "114 m", Q: "0.05 m³/s", U: "2 predios", A: "1.372 ha" },
+  "FERROCARRIL": { prog: "1+765 (Santa Martha)", L: "1.025 km", Q: "0.08 m³/s", U: "1 predio", A: "1.414 ha" },
+  "BARBADILLO": { prog: "3+670", L: "3.358 km", Q: "0.15 m³/s", U: "3 predios", A: "8.899 ha" },
+  "METROPOLITANA": { prog: "3+960", L: "4.459 km", Q: "0.12 m³/s", U: "4 predios", A: "29.531 ha" },
+  "VIRREYES": { prog: "0+569 (Metropolitana)", L: "3.227 km", Q: "0.15 m³/s", U: "3 predios", A: "14.391 ha" },
+  "BELLO HORIZONTE": { prog: "0+090 (Virreyes)", L: "0.294 km", Q: "0.05 m³/s", U: "5 predios", A: "0.373 ha" },
+  "CRISTAL": { prog: "6+450", L: "2.513 km", Q: "0.12 m³/s", U: "3 predios", A: "9.701 ha" },
+  "SEPARADORA": { prog: "6+870", L: "5.078 km", Q: "0.25 m³/s", U: "5 predios", A: "91.048 ha" },
+  "WONG I": { prog: "0+335 (Separadora)", L: "0.197 km", Q: "0.05 m³/s", U: "2 predios", A: "2.00 ha" },
+  "FONTANA": { prog: "3+640 (Separadora)", L: "1.364 km", Q: "0.10 m³/s", U: "2 predios", A: "3.619 ha" },
+  "WONG II": { prog: "0+911 (Fontana)", L: "0.297 km", Q: "0.05 m³/s", U: "2 predios", A: "2.00 ha" },
+  "LA PLANICIE": { prog: "7+090", L: "6.535 km", Q: "0.25 m³/s", U: "32 predios", A: "56.572 ha" },
+  "CD LA PLANICIE": { prog: "Laguna Chica", L: "4.542 km", Q: "0.30 m³/s", U: "1 predio", A: "27.69 ha" },
+  "ALIVIADERO PLANICIE": { prog: "4+130 (La Planicie)", L: "0.445 km", Q: "0.08 m³/s", U: "14 predios", A: "1.470 ha" },
+  "BELAIR": { prog: "0+013 (Aliviadero Planicie)", L: "0.489 km", Q: "0.05 m³/s", U: "8 predios", A: "0.489 ha" },
+  "CALLE 07": { prog: "0+107 (Aliviadero Planicie)", L: "0.927 km", Q: "0.10 m³/s", U: "6 predios", A: "4.362 ha" },
+  "ESCUELA DE EQUITACION": { prog: "9+110", L: "5.239 km", Q: "0.30 m³/s", U: "29 predios", A: "49.471 ha" },
+  "CALLE 3": { prog: "1+860 (Equitación)", L: "0.632 km", Q: "0.08 m³/s", U: "2 predios", A: "0.30 ha" },
+  "CALLE 09": { prog: "1+180 (Calle 3)", L: "0.302 km", Q: "0.05 m³/s", U: "7 predios", A: "0.712 ha" },
+  "UNIVERSIDAD AGRARIA": { prog: "10+680", L: "3.848 km", Q: "0.25 m³/s", U: "2 predios", A: "39.00 ha" },
+  "LA RINCONADA BAJA": { prog: "1+900 (Univ. Agraria)", L: "2.253 km", Q: "0.20 m³/s", U: "25 predios", A: "14.120 ha" },
+  "CERRO CAMACHO": { prog: "12+580", L: "1.193 km", Q: "0.12 m³/s", U: "5 predios", A: "2.48 ha" },
+  "LAS HARAS": { prog: "2+300 (Cerro Camacho)", L: "0.306 km", Q: "0.15 m³/s", U: "2 predios", A: "3.051 ha" },
+  "ENCALADA": { prog: "13+180", L: "8.690 km", Q: "0.35 m³/s", U: "10 predios", A: "119.864 ha" },
+  "AGRARIA": { prog: "2+660 (Encalada)", L: "1.181 km", Q: "0.10 m³/s", U: "1 predio", A: "9.00 ha" },
+  "DERBY": { prog: "13+680", L: "4.486 km", Q: "0.35 m³/s", U: "8 predios", A: "4.897 ha" },
+  "CORTIJO": { prog: "2+950 (Derby)", L: "1.385 km", Q: "0.12 m³/s", U: "3 predios", A: "3.96 ha" },
+  "EL POLO": { prog: "3+140 (Derby)", L: "3.486 m", Q: "0.15 m³/s", U: "3 predios", A: "51.00 ha" },
+  "AOPIP": { prog: "4+860 (Derby)", L: "0.528 km", Q: "0.15 m³/s", U: "2 predios", A: "2.324 ha" }
+};
+
+// Información de Oficinas, Horarios de Atención y Sectoristas
+const COMISION_INFO = {
+  "La Estrella": {
+    titulo: "C.U. Estrella",
+    horario: "Martes y Viernes (9:00 am - 1:00 pm / 2:00 pm - 5:00 pm)",
+    sectoristas: ["Don Daniel", "Mauro"]
+  },
+  "Ñaña": {
+    titulo: "C.U. Ñaña",
+    horario: "Martes y Jueves",
+    sectoristas: ["Ibias Amadeo"]
+  },
+  "Ricardo Palma": {
+    titulo: "C.U. Ricardo Palma",
+    horario: "Lunes, Miércoles y Viernes",
+    sectoristas: ["Luis Huaringa"]
+  },
+  "Ate": {
+    titulo: "C.U. Ate",
+    horario: "Lunes a Viernes (8:00 am a 5:00 pm)",
+    sectoristas: ["Elías", "Matías", "Oscar", "Lorenzo"]
+  },
+  "Chosica": {
+    titulo: "C.U. Chosica",
+    horario: "Lunes a Viernes (8:00 am a 5:00 pm)",
+    sectoristas: ["Por designar"]
+  },
+  "Surco Huatica": {
+    titulo: "C.U. Surco",
+    horario: "Lunes a Viernes (8:00 am a 4:45 pm)",
+    sectoristas: ["Martín"]
+  },
+  "Chacrasana": {
+    titulo: "C.U. Chacrasana",
+    horario: "Por confirmar",
+    sectoristas: ["Juan", "Percy"]
+  },
+  "Carapongo": {
+    titulo: "C.U. Carapongo",
+    horario: "Por confirmar",
+    sectoristas: ["Don Alejandro"]
+  },
+  "Nieveria": {
+    titulo: "C.U. Nievería",
+    horario: "Por confirmar",
+    sectoristas: ["Lizeth"]
+  },
+  "Huachipa": {
+    titulo: "C.U. Huachipa",
+    horario: "Por confirmar",
+    sectoristas: ["Taipe"]
+  },
+  "Chaclacayo": {
+    titulo: "C.U. Chaclacayo",
+    horario: "Por confirmar",
+    sectoristas: ["Argumedo"]
+  }
+};
+
+// Generalización cromática por jerarquía hidráulica (estándar de planos técnicos)
+const COLOR_CONFIG = {
+  'RAÍZ': { fill: '#1e293b', stroke: '#0f172a', ink: '#ffffff', badgeBg: '#334155', badgeInk: '#f8fafc', link: '#94a3b8' },
+  'COM':  { fill: '#0f4c81', stroke: '#0a3357', ink: '#ffffff', badgeBg: '#1b65a4', badgeInk: '#ffffff', link: '#3b82f6' },
+  'CA':   { fill: '#fffbeb', stroke: '#d97706', ink: '#78350f', badgeBg: '#d97706', badgeInk: '#ffffff', link: '#f59e0b' },
+  'CD':   { fill: '#fff7ed', stroke: '#ea580c', ink: '#7c2d12', badgeBg: '#ea580c', badgeInk: '#ffffff', link: '#f97316' },
+  'CP':   { fill: '#fff7ed', stroke: '#ea580c', ink: '#7c2d12', badgeBg: '#ea580c', badgeInk: '#ffffff', link: '#f97316' },
+  'L1':   { fill: '#fef2f2', stroke: '#dc2626', ink: '#7f1d1d', badgeBg: '#dc2626', badgeInk: '#ffffff', link: '#ef4444' },
+  'L2':   { fill: '#eff6ff', stroke: '#2563eb', ink: '#1e3a8a', badgeBg: '#2563eb', badgeInk: '#ffffff', link: '#3b82f6' },
+  'L3':   { fill: '#ecfdf5', stroke: '#059669', ink: '#064e3b', badgeBg: '#059669', badgeInk: '#ffffff', link: '#10b981' },
+  'L4':   { fill: '#f5f3ff', stroke: '#7c3aed', ink: '#4c1d95', badgeBg: '#7c3aed', badgeInk: '#ffffff', link: '#8b5cf6' },
+  'L5':   { fill: '#f0fdf4', stroke: '#0d9488', ink: '#134e4a', badgeBg: '#0d9488', badgeInk: '#ffffff', link: '#14b8a6' }
+};
+
+const NW=215, NH=34, CW=260, RH=44, NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const svg=$('dg-svg'), world=$('dg-w'), LK=$('dg-l'), ND=$('dg-n');
+
+function add(p,n,t){
+  let k=p.c.find(c=>c.n===n&&c.t===t);
+  if(!k){
+    k={n,t,c:[],id:p.id+'.'+p.c.length,p,open:false};
+    p.c.push(k);
+  }
+  return k;
+}
+
+const root={n:'Comisiones',t:'RAÍZ',c:[],id:'r',open:true};
+
+Object.entries(DATA).forEach(([com,cds])=>{
+  const cn=add(root,com,'COM');
+  Object.entries(cds).forEach(([cd,rows])=>{
+    let p=cn;
+    cd.split('>').forEach(raw=>{
+      const x=raw.trim();
+      const type = /^CANAL ADUCTOR|^CA/i.test(x) ? 'CA' : (/^CP/i.test(x) ? 'CP' : 'CD');
+      p=add(p,x,type);
+    });
+    rows.forEach(r=>{
+      let q=p;
+      r.split('|').forEach((raw,i)=>{
+        const x=raw.trim();
+        if(x){
+          if(x.includes(',')){
+            x.split(',').forEach(sub=>{
+              const s=sub.trim();
+              if(s) add(q, s, 'L'+(i+1));
+            });
+          } else {
+            q=add(q, x, 'L'+(i+1));
+          }
+        }
+      });
+    });
+  });
+});
+
+const each=(n,f)=>{f(n);n.c.forEach(k=>each(k,f))};
+let vis=[], tx=30, ty=0, k=1, moved=0;
+
+function layout(){
+  vis=[]; let y=0;
+  (function go(n,d){
+    n.x=d*CW; vis.push(n);
+    if(n.open&&n.c.length){
+      n.c.forEach(c=>go(c,d+1));
+      n.y=(n.c[0].y+n.c[n.c.length-1].y)/2;
+    } else {
+      n.y=y; y+=RH;
+    }
+  })(root,0);
+}
+
+function el(tag,at,par){
+  const e=document.createElementNS(NS,tag);
+  for(const a in at) e.setAttribute(a,at[a]);
+  par&&par.appendChild(e);
+  return e;
+}
+
+const gN=new Map(), gL=new Map();
+const pos=(n,x=n.x,y=n.y)=>`translate(${x}px,${y}px)`;
+
+function mk(n){
+  const cfg = COLOR_CONFIG[n.t] || COLOR_CONFIG['L1'];
+  const g=el('g',{class:'nd'});
+  
+  // Rectángulo principal del nodo
+  el('rect',{class:'main-box',width:NW,height:NH,rx:8,fill:cfg.fill,stroke:cfg.stroke,'stroke-width':1.5},g);
+  
+  // Píldora del badge de nivel
+  const badgeW = n.t==='RAÍZ' ? 22 : (n.t.length>2 ? 32 : 26);
+  el('rect',{x:6,y:6,width:badgeW,height:NH-12,rx:4,fill:cfg.badgeBg},g);
+  
+  // Texto del badge
+  const b=el('text',{x:6+badgeW/2,y:21,class:'bd',fill:cfg.badgeInk,'text-anchor':'middle'},g);
+  b.textContent=n.t==='RAÍZ'?'●':n.t;
+  
+  // Texto del nombre del canal/comisión
+  const txStart = 12 + badgeW;
+  const maxChars = Math.floor((NW - txStart - 28)/7.2);
+  const t=el('text',{x:txStart,y:21,fill:cfg.ink,'font-size':'12px','font-weight':(n.t==='RAÍZ'||n.t==='COM'?'600':'500')},g);
+  t.textContent=n.n.length>maxChars ? n.n.slice(0,maxChars-1)+'…' : n.n;
+  
+  // Tooltip informativo con datos técnicos o de comisión
+  let tip = `${n.t} · ${n.n}`;
+  if(n.t==='COM' && COMISION_INFO[n.n]){
+    const ci=COMISION_INFO[n.n];
+    tip = `${ci.titulo} (Comisión de Usuarios)\nHorario: ${ci.horario}\nSectorista(s): ${ci.sectoristas.join(', ')}`;
+  } else if(TECH_INFO[n.n]){
+    const ti=TECH_INFO[n.n];
+    tip += `\nProg: ${ti.prog}\nLongitud: ${ti.L}\nCaudal: ${ti.Q}\nPredios: ${ti.U}\nÁrea bajo riego: ${ti.A}`;
+  }
+  el('title',{},g).textContent=tip;
+  
+  // Indicador de ramas hijas (+ / -)
+  n.cnt=el('text',{x:NW-9,y:21,'text-anchor':'end',fill:cfg.ink,style:'font-weight:700;font-size:11px;opacity:.75'},g);
+  
+  g.onclick=()=>{
+    if(moved>4||!n.c.length)return;
+    n.open=!n.open;
+    draw();
+  };
+  return g;
+}
+
+function draw(){
+  layout();
+  const seen=new Set();
+  vis.forEach(n=>{
+    let g=gN.get(n.id);
+    if(!g){
+      g=mk(n);
+      gN.set(n.id,g);
+      const o=n.p||n;
+      g.style.transform=pos(n,o.x,o.y);
+      g.style.opacity=0;
+      ND.appendChild(g);
+      g.getBoundingClientRect();
+    }
+    g.style.transform=pos(n);
+    g.style.opacity=1;
+    seen.add(n.id);
+    g.classList.toggle('hit',!!n.hit);
+    n.cnt.textContent=n.c.length ? (n.open?'−':'+')+n.c.length : '';
+    
+    if(n.p){
+      let l=gL.get(n.id);
+      const cfg = COLOR_CONFIG[n.t] || COLOR_CONFIG['L1'];
+      const x1=n.p.x+NW, y1=n.p.y+NH/2, x2=n.x, y2=n.y+NH/2, m=(x1+x2)/2;
+      const d=`M${x1} ${y1}C${m} ${y1} ${m} ${y2} ${x2} ${y2}`;
+      if(!l){
+        l=el('path',{class:'lk',stroke:cfg.link,d:`M${x1} ${y1}L${x1} ${y1}`},LK);
+        gL.set(n.id,l);
+        l.getBoundingClientRect();
+      }
+      l.setAttribute('d',d);
+      l.setAttribute('stroke',cfg.link);
+      l.style.opacity=1;
+    }
+  });
+  
+  [[gN,ND],[gL,LK]].forEach(([m])=>m.forEach((e,id)=>{
+    if(!seen.has(id)){
+      e.style.opacity=0;
+      m.delete(id);
+      setTimeout(()=>e.remove(),320);
+    }
+  }));
+}
+
+function apply(){world.setAttribute('transform',`translate(${tx} ${ty}) scale(${k})`)}
+
+function fit(){
+  const W=svg.clientWidth, H=svg.clientHeight;
+  const ys=vis.map(n=>n.y), minY=Math.min(...ys), maxY=Math.max(...ys)+NH;
+  const maxX=Math.max(...vis.map(n=>n.x))+NW;
+  k=Math.min(1,(W-60)/maxX,(H-90)/(maxY-minY));
+  tx=30;
+  ty=(H-(maxY-minY)*k)/2+10-minY*k;
+  apply();
+}
+
+function focusHits(query){
+  const hits=vis.filter(n=>n.hit);
+  if(!hits.length) return;
+  const W=svg.clientWidth, H=svg.clientHeight;
+  
+  // Buscar coincidencia exacta o el nodo más representativo
+  const exact = hits.find(n => n.n.toLowerCase() === query) || hits[0];
+  
+  let cx, cy, targetK;
+  
+  // Si se busca un canal específico (o hay pocos hits o término con 3+ letras): zoom cercano grande
+  if (hits.length === 1 || query.length >= 3) {
+    const target = exact || hits[0];
+    cx = target.x + NW / 2;
+    cy = target.y + NH / 2;
+    targetK = 1.45; // Zoom cercano claro y legible
+  } else {
+    // Si son varios hits por búsqueda corta (1-2 letras), encuadrar con zoom confortable no lejano
+    const xs = hits.map(n => n.x), ys = hits.map(n => n.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs) + NW;
+    const minY = Math.min(...ys), maxY = Math.max(...ys) + NH;
+    cx = (minX + maxX) / 2;
+    cy = (minY + maxY) / 2;
+    const boxW = Math.max(maxX - minX, 200);
+    const boxH = Math.max(maxY - minY, 150);
+    targetK = Math.min(1.4, Math.max(1.0, Math.min((W - 120) / boxW, (H - 120) / boxH)));
+  }
+
+  k = targetK;
+  tx = W / 2 - cx * k;
+  ty = H / 2 - cy * k;
+
+  // Transición suave al enfocar el canal
+  world.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+  apply();
+  setTimeout(() => { world.style.transition = 'none'; }, 420);
+}
+
+svg.addEventListener('pointerdown',e=>{
+  world.style.transition = 'none';
+  let sx=e.clientX, sy=e.clientY, ox=tx, oy=ty; moved=0;
+  const mv=ev=>{
+    const dx=ev.clientX-sx, dy=ev.clientY-sy;
+    moved=Math.max(moved,Math.hypot(dx,dy));
+    if(moved>4){tx=ox+dx;ty=oy+dy;apply()}
+  };
+  const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up)};
+  addEventListener('pointermove',mv);
+  addEventListener('pointerup',up);
+});
+
+svg.addEventListener('wheel',e=>{
+  world.style.transition = 'none';
+  e.preventDefault();
+  const r=svg.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+  const k2=Math.min(2.5,Math.max(.15,k*(e.deltaY<0?1.1:.9)));
+  tx=x-(x-tx)*k2/k; ty=y-(y-ty)*k2/k; k=k2;
+  apply();
+},{passive:false});
+
+$('dg-exp').onclick=()=>{
+  world.style.transition = 'none';
+  $('dg').classList.remove('searching');
+  each(root,n=>n.open=true);
+  draw();
+  fit();
+};
+$('dg-col').onclick=()=>{
+  world.style.transition = 'none';
+  $('dg').classList.remove('searching');
+  each(root,n=>n.open=false);
+  root.open=true;
+  draw();
+  fit();
+};
+$('dg-fit').onclick=()=>{
+  world.style.transition = 'transform 0.35s ease-out';
+  fit();
+  setTimeout(()=>{ world.style.transition = 'none'; }, 360);
+};
+
+$('dg-q').oninput=e=>{
+  const t=e.target.value.trim().toLowerCase();
+  each(root,n=>n.hit=false);
+  const container = $('dg');
+  if(t){
+    container.classList.add('searching');
+    let count=0;
+    each(root,n=>{
+      if(n!==root&&n.n.toLowerCase().includes(t)){
+        n.hit=true;
+        count++;
+        for(let p=n.p;p;p=p.p)p.open=true;
+      }
+    });
+    draw();
+    if(count>0) focusHits(t);
+  } else {
+    container.classList.remove('searching');
+    draw();
+    fit();
+  }
+};
+
+// Renderizar lista en panel lateral deslizante (Drawer)
+function renderDrawer(){
+  const list = $('dg-drawer-list');
+  if(!list) return;
+  list.innerHTML = '';
+  Object.entries(COMISION_INFO).forEach(([key, info])=>{
+    const card = document.createElement('div');
+    card.className = 'dg-card';
+    card.innerHTML = `
+      <div class="dg-card-header">
+        <span class="dg-card-name">${info.titulo}</span>
+        <span class="dg-card-badge">Comisión</span>
+      </div>
+      <div class="dg-card-row">
+        <span class="dg-card-icon">🕒</span>
+        <span>${info.horario}</span>
+      </div>
+      <div class="dg-card-row">
+        <span class="dg-card-icon">👤</span>
+        <div class="dg-tags">
+          ${info.sectoristas.map(s => `<span class="dg-tag">${s}</span>`).join('')}
+        </div>
+      </div>
+    `;
+    card.onclick = () => {
+      const node = root.c.find(c => c.n === key);
+      if(node){
+        node.open = true;
+        draw();
+        const W = svg.clientWidth, H = svg.clientHeight;
+        k = 1.35;
+        tx = W / 2 - (node.x + NW/2) * k;
+        ty = H / 2 - (node.y + NH/2) * k;
+        world.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+        apply();
+        setTimeout(()=>{ world.style.transition = 'none'; }, 420);
+      }
+    };
+    list.appendChild(card);
+  });
+}
+
+const drawer = $('dg-drawer');
+$('dg-panel-btn').onclick = () => {
+  drawer.classList.toggle('open');
+};
+$('dg-drawer-close').onclick = () => {
+  drawer.classList.remove('open');
+};
+
+renderDrawer();
+
+draw();
+fit();
+addEventListener('resize',fit);
+})();
+</script>
+<!-- ===== HASTA AQUÍ ===== -->
+
+</body>
+</html>
