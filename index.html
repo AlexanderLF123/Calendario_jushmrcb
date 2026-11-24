@@ -3390,10 +3390,10 @@ function sha256(ascii) {
 }
 
 // ===================== CONDUCTORES =====================
-// Hashes SHA-256 de contraseñas autorizadas (jushr2027 y juhsr2027)
+// Hashes SHA-256 de contraseñas autorizadas para gestión de conductores
 const COND_PASS_HASHES = [
-  '8ab0151ec73dcc89fd9f16d6083efac2396d1d6c6ce718c150d86f8c7b9cc9c2', // jushr2027
-  '613e00fc93283d3c5d05aa69c78accad9a030020d9faa2306b5ce0fd1c103711'  // juhsr2027
+  '8ab0151ec73dcc89fd9f16d6083efac2396d1d6c6ce718c150d86f8c7b9cc9c2',
+  '613e00fc93283d3c5d05aa69c78accad9a030020d9faa2306b5ce0fd1c103711'
 ];
 
 function requireCondEditPass(){
@@ -5325,7 +5325,7 @@ loadExpedientesFromFirebase();
 loadComisionesFromFirebase();
 
 // ===== LOGIN =====
-// Hash SHA-256 de usuario jushr (jushr2026)
+// Hash SHA-256 de credenciales de acceso
 const USERS = [
   { user: 'jushr', passHash: 'e00bdbdaf02ee88d2b0ed045073f94516ab0d530f26b4add2288ec25037ed1dc' }
 ];
