@@ -369,6 +369,40 @@
   }
   .geo-popup-btn:hover { background: #e2e8f0; }
 
+  /* PIN PULSANTE UBICACIÓN USUARIO */
+  .user-loc-pin {
+    width: 22px;
+    height: 22px;
+    background: #2563eb;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 14px rgba(37, 99, 235, 0.9);
+    animation: userPulse 1.8s infinite;
+  }
+  @keyframes userPulse {
+    0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  }
+  .geo-btn-min {
+    background: #e2e8f0;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+  }
+  .geo-btn-min:hover {
+    background: #cbd5e1;
+    color: #0f172a;
+  }
+
   /* PIN PULSANTE */
   .pulsing-pin {
     width: 24px;
@@ -433,13 +467,15 @@
   </div>
 
   <div class="geo-nav-btns">
-    <button class="geo-btn active" id="btnToggleDrawer" onclick="toggleDrawer()">
-      📍 Coordenadas & KML
+    <button class="geo-btn" onclick="obtenerUbicacionActual()" id="btnGeoUbicacion" title="Obtener mi ubicación actual con GPS">
+      📍 Mi Ubicación
+    </button>
+    <button class="geo-btn active" id="btnToggleDrawer" onclick="toggleDrawer()" title="Mostrar / Minimizar herramientas GIS">
+      ➖ Minimizar GIS
     </button>
     <button class="geo-btn" onclick="toggleMapLayer()" id="btnLayerToggle" title="Cambiar mapa Satélite / Callejero">
       🛰️ Satélite
     </button>
-
   </div>
 </div>
 
@@ -453,9 +489,14 @@
 <div class="geo-drawer" id="geoDrawer">
   <div class="geo-drawer-header">
     <div class="geo-drawer-title">
-      <span>📍</span> Herramientas GIS
+      <span>🛠️</span> Herramientas GIS
     </div>
-    <button class="geo-drawer-close" onclick="toggleDrawer()">✕</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="geo-btn-min" onclick="toggleDrawer()" title="Minimizar herramientas GIS">
+        ➖ Minimizar
+      </button>
+      <button class="geo-drawer-close" onclick="toggleDrawer()" title="Cerrar">✕</button>
+    </div>
   </div>
 
   <div class="geo-tabs">
@@ -472,17 +513,17 @@
 
       <div class="form-group">
         <label>Nombre / Etiqueta del Punto</label>
-        <input type="text" id="utmName" class="form-control" placeholder="Ej. Bocatoma Huachipa / Predio 123">
+        <input type="text" id="utmName" class="form-control" placeholder="">
       </div>
 
       <div class="form-row">
         <div class="form-group">
           <label>Este (X)</label>
-          <input type="number" id="utmEast" class="form-control" placeholder="Ej. 295420" step="any">
+          <input type="number" id="utmEast" class="form-control" placeholder="" step="any">
         </div>
         <div class="form-group">
           <label>Norte (Y)</label>
-          <input type="number" id="utmNorth" class="form-control" placeholder="Ej. 8674510" step="any">
+          <input type="number" id="utmNorth" class="form-control" placeholder="" step="any">
         </div>
       </div>
 
@@ -505,6 +546,9 @@
           ➕ Guardar Punto
         </button>
       </div>
+      <button class="geo-btn" onclick="obtenerUbicacionActual()" title="Obtener coordenadas desde el GPS del dispositivo" style="width:100%;justify-content:center;margin-top:8px;background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
+        📍 Usar mi ubicación actual (GPS)
+      </button>
 
       
     </div>
@@ -1060,11 +1104,96 @@ function renderizarKmlEnMapa(kmlText, fileName) {
 // ==============================================================
 // 7. CONTROL DEL DRAWER Y TABS
 // ==============================================================
+// ==============================================================
+// 6.5. UBICACIÓN ACTUAL DEL USUARIO (GPS / GEOLOCATION)
+// ==============================================================
+let userLocationMarker = null;
+let userLocationAccuracyCircle = null;
+
+function obtenerUbicacionActual() {
+  if (!navigator.geolocation) {
+    alert('⚠️ Tu navegador o dispositivo no tiene soporte para geolocalización.');
+    return;
+  }
+  const btn = document.getElementById('btnGeoUbicacion');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) btn.innerHTML = '⏳ Obteniendo...';
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      if (btn) btn.innerHTML = origText || '📍 Mi Ubicación';
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const acc = position.coords.accuracy;
+
+      const utm = latLngToUtm(lat, lon, 18);
+
+      document.getElementById('utmEast').value = utm.easting.toFixed(1);
+      document.getElementById('utmNorth').value = utm.northing.toFixed(1);
+      if (!document.getElementById('utmName').value) {
+        document.getElementById('utmName').value = 'Mi Ubicación Actual';
+      }
+
+      if (userLocationMarker) map.removeLayer(userLocationMarker);
+      if (userLocationAccuracyCircle) map.removeLayer(userLocationAccuracyCircle);
+
+      userLocationAccuracyCircle = L.circle([lat, lon], {
+        radius: acc || 20,
+        color: '#2563eb',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.15,
+        weight: 1
+      }).addTo(map);
+
+      const userIcon = L.divIcon({
+        className: 'user-loc-pin',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+
+      userLocationMarker = L.marker([lat, lon], { icon: userIcon }).addTo(map);
+
+      const popupContent = `
+        <div class="geo-popup-box">
+          <div class="geo-popup-title">📍 Mi Ubicación Actual</div>
+          <div class="geo-popup-row"><span>Zona UTM:</span> <strong>${utm.zone} Sur</strong></div>
+          <div class="geo-popup-row"><span>Este (X):</span> <strong>${utm.easting.toFixed(1)}</strong></div>
+          <div class="geo-popup-row"><span>Norte (Y):</span> <strong>${utm.northing.toFixed(1)}</strong></div>
+          <div class="geo-popup-row"><span>Lat / Lon:</span> <strong>${lat.toFixed(5)}, ${lon.toFixed(5)}</strong></div>
+          <div class="geo-popup-row"><span>Precisión GPS:</span> <strong>±${Math.round(acc)} m</strong></div>
+          <div class="geo-popup-actions">
+            <button class="geo-popup-btn" onclick="guardarPuntoDirecto(${utm.easting}, ${utm.northing}, ${lat}, ${lon})">➕ Guardar Punto</button>
+            <a class="geo-popup-btn" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank">🗺️ Maps</a>
+          </div>
+        </div>
+      `;
+      userLocationMarker.bindPopup(popupContent).openPopup();
+      map.setView([lat, lon], 16);
+    },
+    (err) => {
+      if (btn) btn.innerHTML = origText || '📍 Mi Ubicación';
+      let msg = 'No se pudo obtener tu ubicación actual.';
+      if (err.code === err.PERMISSION_DENIED) {
+        msg = 'Permiso denegado. Permite el acceso a la ubicación en los ajustes de tu navegador o celular.';
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        msg = 'La señal de ubicación GPS no está disponible en este momento.';
+      } else if (err.code === err.TIMEOUT) {
+        msg = 'Se agotó el tiempo de espera para obtener la posición GPS.';
+      }
+      alert('⚠️ ' + msg);
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+
 function toggleDrawer() {
   const d = document.getElementById('geoDrawer');
   const btn = document.getElementById('btnToggleDrawer');
-  d.classList.toggle('hidden');
-  btn.classList.toggle('active');
+  const isHidden = d.classList.toggle('hidden');
+  if (btn) {
+    btn.classList.toggle('active', !isHidden);
+    btn.innerHTML = isHidden ? '🛠️ Herramientas GIS' : '➖ Minimizar GIS';
+  }
 }
 
 function switchSection(secId) {
