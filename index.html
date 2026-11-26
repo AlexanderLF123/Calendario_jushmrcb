@@ -1362,30 +1362,13 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     <div class="exp-actions">
       <!-- Selector de Modo de Vista -->
       <div class="com-view-modes">
-        <button class="com-vbtn active" id="btnComViewSplit" onclick="setComViewMode('split')">📊 Tabla + Calendario</button>
+        <button class="com-vbtn" id="btnComViewSplit" onclick="setComViewMode('split')">📊 Tabla + Calendario</button>
         <button class="com-vbtn" id="btnComViewTable" onclick="setComViewMode('table')">📋 Solo Tabla</button>
-        <button class="com-vbtn" id="btnComViewCal" onclick="setComViewMode('cal')">📅 Solo Calendario</button>
+        <button class="com-vbtn active" id="btnComViewCal" onclick="setComViewMode('cal')">📅 Solo Calendario</button>
       </div>
       <button class="btn btn-success btn-sm" onclick="exportarComisionesExcel()">📥 Excel</button>
       
     </div>
-  </div>
-
-  <!-- PESTAÑAS RÁPIDAS DE CADA COMISIÓN -->
-  <div class="com-pills" id="comPills">
-    <div class="com-pill active" onclick="seleccionarComision('TODAS')">🏢 Todas</div>
-    <div class="com-pill" onclick="seleccionarComision('ATE')">ATE</div>
-    <div class="com-pill" onclick="seleccionarComision('SURCO')">SURCO</div>
-    <div class="com-pill" onclick="seleccionarComision('CHOSICA')">CHOSICA</div>
-    <div class="com-pill" onclick="seleccionarComision('CHACRASANA')">CHACRASANA</div>
-    <div class="com-pill" onclick="seleccionarComision('CHACLACAYO')">CHACLACAYO</div>
-    <div class="com-pill" onclick="seleccionarComision('LA ESTRELLA')">LA ESTRELLA</div>
-    <div class="com-pill" onclick="seleccionarComision('ÑAÑA')">ÑAÑA</div>
-    <div class="com-pill" onclick="seleccionarComision('CARAPONGO')">CARAPONGO</div>
-    <div class="com-pill" onclick="seleccionarComision('HUACHIPA')">HUACHIPA</div>
-    <div class="com-pill" onclick="seleccionarComision('NIEVERÍA')">NIEVERÍA</div>
-    <div class="com-pill" onclick="seleccionarComision('RICARDO PALMA')">RICARDO PALMA</div>
-    <div class="com-pill" onclick="seleccionarComision('PARCA')">PARCA</div>
   </div>
 
   <!-- TABLA EDITABLE DE COMISIONES -->
@@ -3911,6 +3894,7 @@ function switchMainTab(tab) {
   } else if (tab === 'com') {
     if (comArea) comArea.classList.add('active-tab');
     if (btnCom) btnCom.className = 'btn btn-amber btn-sm main-tab-btn active';
+    setComViewMode(comViewMode || 'cal');
     renderComisionesUsuarios();
   } else if (tab === 'red') {
     if (redArea) redArea.classList.add('active-tab');
@@ -4908,7 +4892,7 @@ let comisionSeleccionada = 'TODAS';
 let comisionDebounceTimer = null;
 let comCalCurrentDate = new Date();
 let comCalSelectedDate = null;
-let comViewMode = 'split'; // 'split', 'table', 'cal'
+let comViewMode = 'cal'; // 'split', 'table', 'cal'
 
 function parseComYmd(str) {
   if (!str) return null;
