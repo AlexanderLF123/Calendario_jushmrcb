@@ -670,6 +670,30 @@ body::after{
   background: #fafaf9;
   box-shadow: 0 2px 10px var(--shadow);
 }
+
+/* ===================== GEOVISOR ===================== */
+#geovisorPanel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--bg);
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+#geovisorPanel.active-tab {
+  display: flex;
+}
+.geo-iframe {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #0f172a;
+  box-shadow: 0 2px 10px var(--shadow);
+}
 .com-toolbar {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1160,6 +1184,7 @@ document.getElementById('waterDrop').addEventListener('click', function(){
     <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabExp" onclick="switchMainTab('exp')">📁 Expedientes</button>
     <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabCom" onclick="switchMainTab('com')">📋 Cronograma de Actividades</button>
     <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabRed" onclick="switchMainTab('red')">🌊 Red Hidráulica</button>
+    <button class="btn btn-ghost btn-sm main-tab-btn" id="btnTabGeo" onclick="switchMainTab('geo')">🗺️ Geovisor</button>
     <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
     <button class="btn btn-ghost btn-sm" onclick="openModal()">⚙️ Conductores</button>
     <button class="btn btn-ghost btn-sm" onclick="openReuniones()">📋 Reuniones</button>
@@ -1404,6 +1429,11 @@ document.getElementById('waterDrop').addEventListener('click', function(){
 <!-- PANEL RED HIDRÁULICA -->
 <div id="redHidraulicaPanel">
   <iframe src="red-hidraulica.html" class="red-iframe" title="Red Hidráulica y Sectoristas JUSHMRCB"></iframe>
+</div>
+
+<!-- PANEL GEOVISOR -->
+<div id="geovisorPanel">
+  <iframe src="geovisor.html" class="geo-iframe" title="Geovisor Hidráulico JUSHMRCB"></iframe>
 </div>
 
 <div class="main-area">
@@ -3767,20 +3797,24 @@ function switchMainTab(tab) {
   const expArea = document.getElementById('expedientesPanel');
   const comArea = document.getElementById('comisionesPanel');
   const redArea = document.getElementById('redHidraulicaPanel');
+  const geoArea = document.getElementById('geovisorPanel');
   const btnCal = document.getElementById('btnTabCal');
   const btnExp = document.getElementById('btnTabExp');
   const btnCom = document.getElementById('btnTabCom');
   const btnRed = document.getElementById('btnTabRed');
+  const btnGeo = document.getElementById('btnTabGeo');
 
   calArea.style.display = 'none';
   if (expArea) expArea.classList.remove('active-tab');
   if (comArea) comArea.classList.remove('active-tab');
   if (redArea) redArea.classList.remove('active-tab');
+  if (geoArea) geoArea.classList.remove('active-tab');
 
   if (btnCal) btnCal.className = 'btn btn-ghost btn-sm main-tab-btn';
   if (btnExp) btnExp.className = 'btn btn-ghost btn-sm main-tab-btn';
   if (btnCom) btnCom.className = 'btn btn-ghost btn-sm main-tab-btn';
   if (btnRed) btnRed.className = 'btn btn-ghost btn-sm main-tab-btn';
+  if (btnGeo) btnGeo.className = 'btn btn-ghost btn-sm main-tab-btn';
 
   if (tab === 'exp') {
     if (expArea) expArea.classList.add('active-tab');
@@ -3794,6 +3828,9 @@ function switchMainTab(tab) {
   } else if (tab === 'red') {
     if (redArea) redArea.classList.add('active-tab');
     if (btnRed) btnRed.className = 'btn btn-amber btn-sm main-tab-btn active';
+  } else if (tab === 'geo') {
+    if (geoArea) geoArea.classList.add('active-tab');
+    if (btnGeo) btnGeo.className = 'btn btn-amber btn-sm main-tab-btn active';
   } else {
     calArea.style.display = '';
     if (btnCal) btnCal.className = 'btn btn-amber btn-sm main-tab-btn active';
