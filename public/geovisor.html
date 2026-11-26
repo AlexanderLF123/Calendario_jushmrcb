@@ -384,6 +384,39 @@
     70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
     100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
   }
+
+  @media (max-width: 600px) {
+    .geo-topbar {
+      top: 6px;
+      left: 6px;
+      right: 6px;
+      gap: 6px;
+    }
+    .geo-brand {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    .geo-btn {
+      padding: 5px 9px;
+      font-size: 11px;
+    }
+    .geo-coords-bar {
+      bottom: 6px;
+      left: 6px;
+      right: 6px;
+      font-size: 10px;
+      padding: 4px 8px;
+      justify-content: space-between;
+    }
+    .geo-drawer {
+      top: 52px;
+      left: 6px;
+      right: 6px;
+      bottom: 34px;
+      width: auto;
+      max-width: none;
+    }
+  }
 </style>
 </head>
 <body>
