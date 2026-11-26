@@ -369,8 +369,18 @@
   }
   .geo-popup-btn:hover { background: #e2e8f0; }
 
-  /* PIN PULSANTE UBICACIÓN USUARIO */
-  .user-loc-pin {
+  /* RESET LEAFLET DIV ICON PARA EVITAR MARCOS CUADRADOS */
+  .leaflet-div-icon {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  /* PIN PULSANTE UBICACIÓN USUARIO (ANIMACIÓN EN ELEMENTO INTERNO) */
+  .user-loc-container {
+    background: transparent !important;
+    border: none !important;
+  }
+  .user-loc-inner {
     width: 22px;
     height: 22px;
     background: #2563eb;
@@ -384,6 +394,7 @@
     70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
     100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
   }
+
   .geo-btn-min {
     background: #e2e8f0;
     border: 1px solid #cbd5e1;
@@ -403,8 +414,12 @@
     color: #0f172a;
   }
 
-  /* PIN PULSANTE */
-  .pulsing-pin {
+  /* PIN PULSANTE UTM (ANIMACIÓN EN ELEMENTO INTERNO PARA NO AFECTAR TRANSLATE3D DE LEAFLET) */
+  .pulsing-pin-container {
+    background: transparent !important;
+    border: none !important;
+  }
+  .pulsing-pin-inner {
     width: 24px;
     height: 24px;
     background: #f59e0b;
@@ -770,11 +785,17 @@ function ubicarPuntoUTM() {
   // Quitar pin temporal previo si existe
   if (currentPinMarker) map.removeLayer(currentPinMarker);
 
-  // Crear icono pulsante
+  // Limpiar marcadores de GPS si estaban activos
+  if (userLocationMarker) { map.removeLayer(userLocationMarker); userLocationMarker = null; }
+  if (userLocationAccuracyCircle) { map.removeLayer(userLocationAccuracyCircle); userLocationAccuracyCircle = null; }
+
+  // Crear icono pulsante con contenedor limpio para no interferir con translate3d de Leaflet
   const pinIcon = L.divIcon({
-    className: 'pulsing-pin',
+    className: 'pulsing-pin-container',
+    html: '<div class="pulsing-pin-inner"></div>',
     iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -14]
   });
 
   currentPinMarker = L.marker([pos.lat, pos.lon], { icon: pinIcon }).addTo(map);
@@ -808,8 +829,10 @@ function guardarPuntoActual() {
   }
 
   const pos = utmToLatLng(east, north, zone, true);
+  // Retirar pin temporal previo para que solo quede el punto guardado en el mapa
+  if (currentPinMarker) { map.removeLayer(currentPinMarker); currentPinMarker = null; }
   agregarPuntoLista({ name, east, north, zone, lat: pos.lat, lon: pos.lon });
-  ubicarPuntoUTM();
+  map.setView([pos.lat, pos.lon], 16);
 }
 
 function guardarPuntoDirecto(east, north, lat, lon) {
@@ -1136,9 +1159,11 @@ function obtenerUbicacionActual() {
       }).addTo(map);
 
       const userIcon = L.divIcon({
-        className: 'user-loc-pin',
+        className: 'user-loc-container',
+        html: '<div class="user-loc-inner"></div>',
         iconSize: [22, 22],
-        iconAnchor: [11, 11]
+        iconAnchor: [11, 11],
+        popupAnchor: [0, -13]
       });
 
       userLocationMarker = L.marker([lat, lon], { icon: userIcon }).addTo(map);
@@ -1205,7 +1230,13 @@ function switchSection(secId) {
   }
 }
 
-// Inicializar lista
+// Inicializar lista y evitar propagación de clicks desde el panel al mapa
+const drawerEl = document.getElementById('geoDrawer');
+if (drawerEl && L.DomEvent) {
+  L.DomEvent.disableClickPropagation(drawerEl);
+  L.DomEvent.disableScrollPropagation(drawerEl);
+}
+
 renderizarPuntosEnMapa();
 renderizarListaPuntos();
 </script>
