@@ -467,11 +467,11 @@
   </div>
 
   <div class="geo-nav-btns">
-    <button class="geo-btn" onclick="obtenerUbicacionActual()" id="btnGeoUbicacion" title="Obtener mi ubicación actual con GPS">
-      📍 Mi Ubicación
+    <button class="geo-btn" onclick="obtenerUbicacionActual()" id="btnGeoUbicacion" title="Obtener ubicación actual">
+      📍 Ubicación actual
     </button>
-    <button class="geo-btn active" id="btnToggleDrawer" onclick="toggleDrawer()" title="Mostrar / Minimizar herramientas GIS">
-      ➖ Minimizar GIS
+    <button class="geo-btn active" id="btnToggleDrawer" onclick="toggleDrawer()" title="Minimizar / Abrir herramientas GIS" style="padding:7px 11px">
+      ➖
     </button>
     <button class="geo-btn" onclick="toggleMapLayer()" id="btnLayerToggle" title="Cambiar mapa Satélite / Callejero">
       🛰️ Satélite
@@ -492,9 +492,7 @@
       <span>🛠️</span> Herramientas GIS
     </div>
     <div style="display:flex;align-items:center;gap:6px">
-      <button class="geo-btn-min" onclick="toggleDrawer()" title="Minimizar herramientas GIS">
-        ➖ Minimizar
-      </button>
+      <button class="geo-btn-min" onclick="toggleDrawer()" title="Minimizar herramientas GIS" style="width:26px;height:26px;padding:0;justify-content:center;border-radius:50%">➖</button>
       <button class="geo-drawer-close" onclick="toggleDrawer()" title="Cerrar">✕</button>
     </div>
   </div>
@@ -547,7 +545,7 @@
         </button>
       </div>
       <button class="geo-btn" onclick="obtenerUbicacionActual()" title="Obtener coordenadas desde el GPS del dispositivo" style="width:100%;justify-content:center;margin-top:8px;background:#eff6ff;border-color:#bfdbfe;color:#1e40af">
-        📍 Usar mi ubicación actual (GPS)
+        📍 Ubicación actual
       </button>
 
       
@@ -1121,7 +1119,7 @@ function obtenerUbicacionActual() {
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      if (btn) btn.innerHTML = origText || '📍 Mi Ubicación';
+      if (btn) btn.innerHTML = '📍 Ubicación actual';
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
       const acc = position.coords.accuracy;
@@ -1171,7 +1169,7 @@ function obtenerUbicacionActual() {
       map.setView([lat, lon], 16);
     },
     (err) => {
-      if (btn) btn.innerHTML = origText || '📍 Mi Ubicación';
+      if (btn) btn.innerHTML = '📍 Ubicación actual';
       let msg = 'No se pudo obtener tu ubicación actual.';
       if (err.code === err.PERMISSION_DENIED) {
         msg = 'Permiso denegado. Permite el acceso a la ubicación en los ajustes de tu navegador o celular.';
@@ -1192,7 +1190,7 @@ function toggleDrawer() {
   const isHidden = d.classList.toggle('hidden');
   if (btn) {
     btn.classList.toggle('active', !isHidden);
-    btn.innerHTML = isHidden ? '🛠️ Herramientas GIS' : '➖ Minimizar GIS';
+    btn.innerHTML = isHidden ? '🛠️' : '➖';
   }
 }
 
