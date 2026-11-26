@@ -444,6 +444,46 @@ body::after{
 .leg-proc { background: #facc15; }
 .leg-aten { background: #22c55e; }
 
+/* ===================== ESTILOS SEMANA ACTUAL Y HOY EN EXPEDIENTES ===================== */
+.exp-table tr.row-hoy td {
+  background: rgba(245, 158, 11, 0.16) !important;
+  font-weight: 600;
+}
+.exp-table tr.row-hoy {
+  border-left: 5px solid #f59e0b !important;
+}
+.badge-hoy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f59e0b;
+  color: #1b2b4b;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-right: 6px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  vertical-align: middle;
+}
+.exp-table tr.row-semana-actual {
+  border-left: 3px solid rgba(59, 130, 246, 0.6);
+}
+.exp-table tr.row-semana-actual.row-lunes {
+  border-top: 2px solid #3b82f6 !important;
+}
+.exp-table tr.row-semana-actual.row-viernes {
+  border-bottom: 2px solid #3b82f6 !important;
+}
+.exp-table tr.row-focused td {
+  animation: pulseRowExp 2s ease-out;
+}
+@keyframes pulseRowExp {
+  0% { background: rgba(245, 158, 11, 0.38) !important; }
+  100% { background: rgba(245, 158, 11, 0.16) !important; }
+}
+
 .exp-table-wrap {
   flex: 1;
   overflow: auto;
@@ -1152,6 +1192,12 @@ document.getElementById('waterDrop').addEventListener('click', function(){
         <option value="5">Steven Mamani Tito</option>
         <option value="6">Rosalía Gonzales Relaisa</option>
       </select>
+      <select id="filtroExpRango" class="exp-input" onchange="filtrarExpedientes()" title="Filtrar por rango de fechas">
+        <option value="todos" selected>📅 Todas las fechas</option>
+        <option value="semana">🎯 Solo Semana Actual</option>
+        <option value="mes">📆 Solo Mes Actual</option>
+      </select>
+      <button class="btn btn-amber btn-sm" onclick="enfocarSemanaActualExpedientes(true)" title="Centrar la vista en el día de hoy y la semana actual" style="display:inline-flex;align-items:center;gap:4px">🎯 Ir a Hoy</button>
       <button class="btn btn-ghost btn-sm" style="border:1px solid var(--border);color:var(--text)" onclick="limpiarFiltrosExp()">✖ Limpiar</button>
     </div>
 
@@ -3740,6 +3786,7 @@ function switchMainTab(tab) {
     if (expArea) expArea.classList.add('active-tab');
     if (btnExp) btnExp.className = 'btn btn-amber btn-sm main-tab-btn active';
     renderTablaExpedientes();
+    setTimeout(() => enfocarSemanaActualExpedientes(false), 80);
   } else if (tab === 'com') {
     if (comArea) comArea.classList.add('active-tab');
     if (btnCom) btnCom.className = 'btn btn-amber btn-sm main-tab-btn active';
@@ -4015,6 +4062,74 @@ function renderTheadExpedientes(fPer) {
   </tr>`;
 }
 
+function getHoyYMD() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+}
+
+function getDiasSemanaActual(refDate = new Date()) {
+  const d = new Date(refDate);
+  const day = d.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const lunes = new Date(d);
+  lunes.setDate(d.getDate() + diffToMonday);
+  
+  const dias = [];
+  for (let i = 0; i < 5; i++) {
+    const cur = new Date(lunes);
+    cur.setDate(lunes.getDate() + i);
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const dia = String(cur.getDate()).padStart(2, '0');
+    dias.push(`${y}-${m}-${dia}`);
+  }
+  return dias;
+}
+
+function enfocarSemanaActualExpedientes(smooth = true) {
+  const wrap = document.querySelector('.exp-table-wrap');
+  if (!wrap) return;
+
+  const hoyYmd = getHoyYMD();
+  const diasSemana = getDiasSemanaActual();
+
+  // Buscar la fila de hoy
+  let targetRow = document.querySelector(`#tbodyExpedientes tr[data-fecha="${hoyYmd}"]`);
+
+  // Si hoy es fin de semana o no está en la tabla, buscar el primer día disponible de la semana actual
+  if (!targetRow) {
+    for (const d of diasSemana) {
+      targetRow = document.querySelector(`#tbodyExpedientes tr[data-fecha="${d}"]`);
+      if (targetRow) break;
+    }
+  }
+
+  // Si no hay fila de la semana actual (ej. filtros de búsqueda activos), no forzar scroll
+  if (!targetRow) return;
+
+  // Ubicar la fila del lunes de la semana actual para que quede en el tope visible
+  const rowLunes = document.querySelector(`#tbodyExpedientes tr[data-fecha="${diasSemana[0]}"]`);
+  const scrollTarget = rowLunes || targetRow;
+
+  const thead = document.getElementById('theadExpedientes');
+  const headerHeight = thead ? thead.offsetHeight : 44;
+  const targetOffset = scrollTarget.offsetTop - headerHeight - 10;
+
+  wrap.scrollTo({
+    top: Math.max(0, targetOffset),
+    behavior: smooth ? 'smooth' : 'auto'
+  });
+
+  // Animación suave de enfoque en la fila de hoy
+  if (targetRow) {
+    targetRow.classList.add('row-focused');
+    setTimeout(() => targetRow.classList.remove('row-focused'), 2200);
+  }
+}
+
 function renderTablaExpedientes() {
   const tbody = document.getElementById('tbodyExpedientes');
   if (!tbody) return;
@@ -4022,6 +4137,11 @@ function renderTablaExpedientes() {
   const fNum = (document.getElementById('filtroExpNum')?.value || '').trim().toLowerCase();
   const fEst = document.getElementById('filtroExpEstado')?.value || '';
   const fPer = document.getElementById('filtroExpPersona')?.value || '';
+  const fRango = document.getElementById('filtroExpRango')?.value || 'todos';
+
+  const hoyYmd = getHoyYMD();
+  const diasSemana = getDiasSemanaActual();
+  const mesActualPrefix = hoyYmd.substring(0, 7);
 
   renderTheadExpedientes(fPer);
 
@@ -4051,6 +4171,10 @@ function renderTablaExpedientes() {
   fechas.forEach(fecha => {
     // Excluir fines de semana
     if (esFinDeSemana(fecha)) return;
+
+    // Filtro por Rango Temporal
+    if (fRango === 'semana' && !diasSemana.includes(fecha)) return;
+    if (fRango === 'mes' && !fecha.startsWith(mesActualPrefix)) return;
 
     const row = expedientesData[fecha] || { estado: 'Sin atender', cols: {} };
     const cols = row.cols || {};
@@ -4098,8 +4222,18 @@ function renderTablaExpedientes() {
     if (row.estado === 'En proceso') stClass = 'status-proc';
     if (row.estado === 'Atendido') stClass = 'status-aten';
 
-    html += `<tr data-fecha="${fecha}">
-      <td class="col-fecha">${formatFechaDisplay(fecha)}</td>`;
+    const esHoy = (fecha === hoyYmd);
+    const esSemana = diasSemana.includes(fecha);
+    let trClass = '';
+    if (esSemana) trClass += ' row-semana-actual';
+    if (fecha === diasSemana[0]) trClass += ' row-lunes';
+    if (fecha === diasSemana[diasSemana.length - 1]) trClass += ' row-viernes';
+    if (esHoy) trClass += ' row-hoy';
+
+    const badgeHoy = esHoy ? '<span class="badge-hoy-tag">📍 HOY</span> ' : '';
+
+    html += `<tr data-fecha="${fecha}" class="${trClass.trim()}">
+      <td class="col-fecha">${badgeHoy}${formatFechaDisplay(fecha)}</td>`;
 
     // Renderizar únicamente las columnas visibles (una sola si hay filtro de personal)
     visibleCols.forEach(c => {
@@ -4379,7 +4513,9 @@ function limpiarFiltrosExp() {
   document.getElementById('filtroExpNum').value = '';
   document.getElementById('filtroExpEstado').value = '';
   document.getElementById('filtroExpPersona').value = '';
+  if (document.getElementById('filtroExpRango')) document.getElementById('filtroExpRango').value = 'todos';
   renderTablaExpedientes();
+  setTimeout(() => enfocarSemanaActualExpedientes(true), 60);
 }
 
 function exportarExpedientesExcel() {
